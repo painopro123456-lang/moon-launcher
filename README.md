@@ -1,29 +1,36 @@
 # Moon Launcher
 
-A Windows desktop launcher project for managing Minecraft versions, isolated instances, and modpacks.
+A Windows desktop launcher for Minecraft Java Edition with separate game profiles and modpacks.
 
-## Download the Windows preview
+## Download for Windows
 
 Every update to the `main` branch builds a Windows 64-bit installer.
 
 1. Open the repository's **Actions** tab.
-2. Choose the newest successful **Windows download** run.
+2. Choose the latest successful **Windows download** run.
 3. Under **Artifacts**, download **Moon-Launcher-Windows-x64**.
-4. Unzip the download, then open `Moon-Launcher-Setup-0.1.0-x64.exe` and follow the installer.
+4. Unzip it, then open `Moon-Launcher-Setup-0.1.0-x64.exe`.
 
-GitHub keeps each build artifact for 14 days. This preview installer is unsigned, so Windows may show an unknown-publisher prompt.
+GitHub keeps preview builds for 14 days. The installer is unsigned, so Windows may show an unknown-publisher prompt.
 
-## What this preview can do
+## Features
 
-- Browse the Minecraft version catalog.
-- Save named local instance entries.
-- Search Modrinth modpacks and install the latest pack version into its own instance folder.
-- Download and SHA-1/SHA-512 verify pack files, then apply client overrides from the .mrpack.
-- Import local Modrinth .mrpack files; read metadata from CurseForge .zip manifests.
+- Browse Minecraft versions and create separate vanilla instances.
+- Sign in with Microsoft's device-code flow. Moon Launcher shows a one-time code and opens Microsoft's sign-in page when you choose.
+- Install and launch vanilla Minecraft. Game files are shared where possible; each instance keeps its own saves, options, and mods folder.
+- Choose the Moon Launcher directory in Settings. Existing instance and game data is moved into the selected folder. Microsoft account tokens remain encrypted in Windows secure storage.
+- Choose memory, download connections, and whether Minecraft starts fullscreen.
+- Search Modrinth modpacks, download and checksum-verify their files, and import local `.mrpack` files.
 
-## What is not ready yet
+## One-time Microsoft setup
 
-This download is an early preview, not a complete playable Minecraft launcher. It installs Modrinth pack files into isolated instance folders, but it does **not** install the Minecraft game or mod loader, sign into Microsoft, or launch the game. CurseForge pack imports currently add manifest details only; installing their files needs an approved CurseForge integration. The launch action remains disabled while the Minecraft engine is being connected.
+For Microsoft sign-in, each user needs a public Application (client) ID from a Microsoft Entra app registration. Set it up as a desktop/public client, allow public client flows, and use personal Microsoft accounts. Paste the Application (client) ID into Moon Launcher Settings. The app never requests a Microsoft password or client secret.
+
+Sign-in can only complete for an account that owns Minecraft: Java Edition. Moon Launcher stores its refresh token encrypted with Windows secure storage.
+
+## Current limits
+
+Modrinth packs with Fabric, Forge, or another mod loader can be installed as files, but loader setup is not connected yet, so those packs cannot launch. CurseForge import reads pack metadata only; downloadable CurseForge content requires an approved integration.
 
 ## Run from source
 
@@ -33,7 +40,5 @@ Install Node.js 22.16 or newer, then run:
 npm install
 npm start
 ```
-
-The app must never ask for or store a Microsoft account password. A Microsoft app registration is needed before publishing account sign-in.
 
 Moon Launcher is an independent project and is not affiliated with Mojang or Microsoft.

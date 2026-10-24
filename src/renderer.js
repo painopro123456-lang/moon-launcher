@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -66,16 +66,171 @@ function renderInstances() {
       ? " · " + instance.pack.source + (instance.pack.loader && instance.pack.loader !== "Vanilla" ? " · " + instance.pack.loader : "")
       : "";
     detail.textContent = "Minecraft " + instance.minecraftVersion + packInfo;
+    card.dataset.instanceId = instance.id;
     const launch = document.createElement("button");
     launch.className = "launch-button";
-    launch.textContent = "Launch not available yet";
-    launch.disabled = true;
-    launch.title = "Microsoft sign-in and game installation are not connected yet.";
+    launch.textContent = instance.installState === "installed" ? "Play" : "Install & Play";
+    const isLoaderPack = Boolean(instance.pack?.loader && instance.pack.loader !== "Vanilla");
+    launch.disabled = isLoaderPack;
+    launch.title = isLoaderPack
+      ? "This pack's mod loader is not supported yet."
+      : "Install or launch this Minecraft instance.";
+    launch.addEventListener("click", () => launchMinecraftInstance(instance.id, launch));
 
     card.append(top, title, detail, launch);
     host.append(card);
   }
 }
+
+async function launchMinecraftInstance(instanceId, button) {
+  button.disabled = true;
+  button.textContent = "Preparing…";
+  try {
+    await api.launchInstance(instanceId);
+  } catch (error) {
+    button.disabled = false;
+    const instance = state.instances.find((item) => item.id === instanceId);
+    button.textContent = instance?.installState === "installed" ? "Play" : "Install & Play";
+    showToast(error.message || "Minecraft could not be launched.");
+  }
+}
+
+function handleLauncherProgress(progress) {
+  const card = [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === progress.instanceId);
+  const button = card?.querySelector(".launch-button");
+  if (!button) return;
+  if (["closed", "error"].includes(progress.status)) {
+    button.disabled = false;
+    const instance = state.instances.find((item) => item.id === progress.instanceId);
+    button.textContent = instance?.installState === "installed" ? "Play" : "Install & Play";
+    if (progress.status === "error") showToast(progress.message || "Minecraft could not start.");
+    return;
+  }
+  button.disabled = true;
+  button.textContent = progress.status === "running" ? "Minecraft running" : (progress.message || "Starting…");
+}
+
+function renderAccount(status) {
+  state.account = status;
+  const name = status?.signedIn ? status.username : "Not signed in";
+  const detail = status?.signedIn ? "Minecraft account connected" : "Minecraft account";
+  $(".account-card strong").textContent = name;
+  $(".account-card span").textContent = detail;
+  $(".avatar").textContent = status?.signedIn ? String(name || "M").slice(0, 1).toUpperCase() : "?";
+  $("#settings-account-name").textContent = status?.signedIn ? "Signed in as " + name : "Not signed in";
+  $("#settings-account-detail").textContent = status?.signedIn
+    ? "This Microsoft account is ready for Minecraft."
+    : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
+  $("#sign-in-button").hidden = Boolean(status?.signedIn);
+  $("#sign-out-button").hidden = !status?.signedIn;
+  if (status?.clientId !== undefined) $("#microsoft-client-id").value = status.clientId;
+}
+
+async function refreshAccountStatus() {
+  try { renderAccount(await api.getAccountStatus()); }
+  catch (error) { showToast(error.message || "Could not read the saved Minecraft account."); }
+}
+
+async function loadSettings() {
+  try {
+    state.settings = await api.getSettings();
+    $("#game-directory-path").textContent = state.settings.gameDirectory;
+    $("#memory-setting").value = String(state.settings.memoryGb);
+    $("#connections-setting").value = String(state.settings.downloadConnections);
+    $("#fullscreen-setting").checked = Boolean(state.settings.fullscreen);
+  } catch (error) {
+    showToast(error.message || "Could not load launcher settings.");
+  }
+}
+
+async function saveLauncherSettings() {
+  const saveButton = $("#save-launcher-settings");
+  saveButton.disabled = true;
+  try {
+    state.settings = await api.saveSettings({
+      memoryGb: $("#memory-setting").value === "auto" ? "auto" : Number($("#memory-setting").value),
+      downloadConnections: Number($("#connections-setting").value),
+      fullscreen: $("#fullscreen-setting").checked
+    });
+    $("#settings-save-status").textContent = "Settings saved.";
+    showToast("Launcher settings saved.");
+  } catch (error) {
+    $("#settings-save-status").textContent = "Could not save these settings.";
+    showToast(error.message || "Could not save settings.");
+  } finally {
+    saveButton.disabled = false;
+  }
+}
+
+async function changeLauncherDirectory() {
+  try {
+    const settings = await api.chooseLauncherDirectory();
+    if (settings.canceled) return;
+    state.settings = settings;
+    $("#game-directory-path").textContent = settings.gameDirectory;
+    await loadInstances();
+    showToast("Moon Launcher files are now stored in the chosen folder.");
+  } catch (error) {
+    showToast(error.message || "Could not change the Moon Launcher folder.");
+  }
+}
+
+async function saveClientId() {
+  try {
+    const result = await api.saveMicrosoftClientId($("#microsoft-client-id").value);
+    $("#microsoft-client-id").value = result.clientId;
+    await refreshAccountStatus();
+    showToast(result.configured ? "Microsoft Application ID saved." : "Microsoft Application ID cleared.");
+  } catch (error) {
+    showToast(error.message || "Could not save the Microsoft Application ID.");
+  }
+}
+
+function openAuthDialog() {
+  $("#auth-status-message").textContent = "Starting secure Microsoft device sign-in…";
+  $("#auth-code-panel").hidden = true;
+  if (!$("#auth-dialog").open) $("#auth-dialog").showModal();
+}
+
+async function startMicrosoftSignIn() {
+  openAuthDialog();
+  state.signInPromise = api.signInMicrosoft();
+  try {
+    const account = await state.signInPromise;
+    renderAccount(account);
+    $("#auth-status-message").textContent = "You're signed in as " + account.username + ".";
+    $("#auth-code-panel").hidden = true;
+    showToast("Signed in as " + account.username + ".");
+    setTimeout(() => { if ($("#auth-dialog").open) $("#auth-dialog").close(); }, 900);
+  } catch (error) {
+    $("#auth-status-message").textContent = error.message || "Microsoft sign-in could not be completed.";
+    if (!/canceled/i.test(error.message || "")) showToast(error.message || "Microsoft sign-in failed.");
+  } finally {
+    state.signInPromise = null;
+  }
+}
+
+async function cancelMicrosoftSignIn() {
+  if (state.signInPromise) await api.cancelSignIn().catch(() => {});
+  if ($("#auth-dialog").open) $("#auth-dialog").close();
+}
+
+api.onAuthProgress((progress) => {
+  if (progress.status === "starting") openAuthDialog();
+  if (progress.status === "device-code") {
+    state.verificationUri = progress.verificationUri;
+    $("#auth-status-message").textContent = progress.message || "Enter this code on Microsoft's sign-in page.";
+    $("#auth-user-code").textContent = progress.userCode || "Check the sign-in details";
+    $("#auth-code-panel").hidden = false;
+  } else if (progress.status === "signed-in") {
+    $("#auth-status-message").textContent = progress.message || "Microsoft sign-in complete.";
+    $("#auth-code-panel").hidden = true;
+    refreshAccountStatus();
+  } else if (progress.status === "error") {
+    $("#auth-status-message").textContent = progress.message || "Microsoft sign-in failed.";
+  }
+});
+api.onLauncherProgress(handleLauncherProgress);
 
 function renderSearchResults(projects) {
   const host = $("#modpack-results");
@@ -147,7 +302,7 @@ async function installModrinthPack(project, button) {
     state.instances.unshift(instance);
     renderInstances();
     button.textContent = "Installed";
-    showToast(instance.name + " files are ready. Minecraft and loader setup are still in progress.");
+    showToast(instance.name + " pack files are ready.");
   } catch (error) {
     button.disabled = false;
     button.textContent = "Try again";
@@ -221,7 +376,7 @@ async function createInstance(event) {
     renderInstances();
     form.closest("dialog").close();
     form.reset();
-    showToast("Instance added. Game installation is still being connected.");
+    showToast("Instance added. Press Install & Play to set it up.");
   } catch (error) {
     showToast(error.message || "Could not create the instance.");
   }
@@ -238,7 +393,7 @@ async function importPack() {
     state.instances.unshift(instance);
     renderInstances();
     if (instance.installState === "files-ready") {
-      showToast(instance.name + " files are ready. Minecraft and loader setup are still in progress.");
+      showToast(instance.name + " pack files are ready.");
     } else if (instance.source === "curseforge") {
       showToast("Added the CurseForge pack details. Its files need an approved CurseForge integration.");
     } else {
@@ -283,7 +438,20 @@ $("#modpack-query").addEventListener("keydown", (event) => {
   if (event.key === "Enter") searchModpacks();
 });
 $("#open-folder").addEventListener("click", () => api.openInstanceFolder());
+$(".account-card").addEventListener("click", () => { if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); });
+$(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
+$("#save-client-id").addEventListener("click", saveClientId);
+$("#open-app-registration").addEventListener("click", () => api.openMicrosoftRegistration().catch((error) => showToast(error.message)));
+$("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
+$("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); showToast("Minecraft account signed out."); } catch (error) { showToast(error.message); } });
+$("#save-launcher-settings").addEventListener("click", saveLauncherSettings);
+$("#change-game-directory").addEventListener("click", changeLauncherDirectory);
+$("#close-auth-dialog").addEventListener("click", cancelMicrosoftSignIn);
+$("#cancel-auth").addEventListener("click", cancelMicrosoftSignIn);
+$("#auth-dialog").addEventListener("cancel", (event) => { event.preventDefault(); cancelMicrosoftSignIn(); });
+$("#copy-auth-code").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("#auth-user-code").textContent); showToast("Sign-in code copied."); } catch { showToast("Select and copy the sign-in code."); } });
+$("#open-auth-browser").addEventListener("click", async () => { try { await api.openMicrosoftVerification(state.verificationUri); } catch (error) { showToast(error.message || "Could not open Microsoft sign-in."); } });
 $("#window-minimize").addEventListener("click", () => api.minimizeWindow());
 $("#window-maximize").addEventListener("click", async () => {
   const maximized = await api.toggleMaximizeWindow();
@@ -296,3 +464,5 @@ $("#window-close").addEventListener("click", () => api.closeWindow());
 
 loadVersions();
 loadInstances();
+loadSettings();
+refreshAccountStatus();

@@ -1,4 +1,5 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require("electron");
+const os = require("node:os");
 const AdmZip = require("adm-zip");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
@@ -24,13 +25,120 @@ const MODRINTH_DOWNLOAD_HOSTS = new Set([
   "storage.googleapis.com"
 ]);
 let mainWindow;
+let launcherPreferences = {
+  gameDirectory: app.getPath("userData"),
+  memoryGb: "auto",
+  downloadConnections: 4,
+  fullscreen: false
+};
 
 function getStatePath() {
   return path.join(app.getPath("userData"), "moon-launcher.json");
 }
 
 function getInstancesPath() {
-  return path.join(app.getPath("userData"), "instances");
+  return path.join(launcherPreferences.gameDirectory, "instances");
+}
+
+function getLauncherPreferencesPath() {
+  return path.join(app.getPath("userData"), "launcher-preferences.json");
+}
+
+function validateLauncherPreferences(input = {}) {
+  const memory = input.memoryGb === "auto" ? "auto" : Number(input.memoryGb);
+  const connections = Number(input.downloadConnections);
+  const directory = typeof input.gameDirectory === "string" && input.gameDirectory.trim()
+    ? path.resolve(input.gameDirectory)
+    : app.getPath("userData");
+  return {
+    gameDirectory: directory,
+    memoryGb: memory === "auto" || (Number.isInteger(memory) && memory >= 2 && memory <= 16) ? memory : "auto",
+    downloadConnections: Number.isInteger(connections) && connections >= 2 && connections <= 8 ? connections : 4,
+    fullscreen: input.fullscreen === true
+  };
+}
+
+async function loadLauncherPreferences() {
+  try {
+    launcherPreferences = validateLauncherPreferences(JSON.parse(await fs.readFile(getLauncherPreferencesPath(), "utf8")));
+  } catch (error) {
+    if (error.code !== "ENOENT") console.error("Could not read launcher preferences:", error);
+    launcherPreferences = validateLauncherPreferences({});
+  }
+}
+
+async function writeLauncherPreferences(next) {
+  const valid = validateLauncherPreferences({ ...launcherPreferences, ...next });
+  const target = getLauncherPreferencesPath();
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target + ".tmp", JSON.stringify(valid, null, 2), "utf8");
+  await fs.rename(target + ".tmp", target);
+  launcherPreferences = valid;
+  return { ...launcherPreferences };
+}
+
+async function pathExists(target) {
+  try { await fs.access(target); return true; } catch { return false; }
+}
+
+async function moveManagedDataDirectory(nextDirectory) {
+  const requestedDirectory = String(nextDirectory || "").trim();
+  if (!requestedDirectory || requestedDirectory.length > 320) throw new Error("Choose a valid folder path.");
+  const newRoot = path.resolve(requestedDirectory);
+  const oldRoot = path.resolve(launcherPreferences.gameDirectory);
+  if (newRoot.toLowerCase() === oldRoot.toLowerCase()) return { ...launcherPreferences };
+  if (typeof activeLaunches !== "undefined" && activeLaunches.size) throw new Error("Close Minecraft before moving the Moon Launcher folder.");
+  const relativeOld = path.relative(oldRoot, newRoot);
+  const relativeNew = path.relative(newRoot, oldRoot);
+  if ((!relativeOld.startsWith("..") && !path.isAbsolute(relativeOld)) || (!relativeNew.startsWith("..") && !path.isAbsolute(relativeNew))) {
+    throw new Error("Choose a folder outside the current Moon Launcher folder.");
+  }
+
+  const managedNames = ["instances", "minecraft"];
+  const sources = [];
+  for (const name of managedNames) {
+    const source = path.join(oldRoot, name);
+    const destination = path.join(newRoot, name);
+    if (!(await pathExists(source))) continue;
+    if (await pathExists(destination)) {
+      const items = await fs.readdir(destination).catch(() => ["not-empty"]);
+      if (items.length) throw new Error("That folder already has Moon Launcher data. Choose an empty folder.");
+    }
+    sources.push({ name, source, destination });
+  }
+
+  await fs.mkdir(newRoot, { recursive: true });
+  const staging = path.join(newRoot, ".moon-launcher-moving-" + crypto.randomUUID());
+  const created = [];
+  await fs.mkdir(staging, { recursive: true });
+  try {
+    for (const item of sources) await fs.cp(item.source, path.join(staging, item.name), { recursive: true, errorOnExist: true, force: false });
+    for (const item of sources) {
+      if (await pathExists(item.destination)) await fs.rmdir(item.destination);
+      await fs.rename(path.join(staging, item.name), item.destination);
+      created.push(item.destination);
+    }
+    const saved = await writeLauncherPreferences({ gameDirectory: newRoot });
+    await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+    for (const item of sources) await fs.rm(item.source, { recursive: true, force: true }).catch((error) => console.error("Could not clean up old launcher data:", error));
+    return saved;
+  } catch (error) {
+    if (launcherPreferences.gameDirectory.toLowerCase() === oldRoot.toLowerCase()) {
+      for (const destination of created) await fs.rm(destination, { recursive: true, force: true }).catch(() => {});
+    }
+    await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function chooseLauncherDirectory() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose Moon Launcher folder",
+    defaultPath: launcherPreferences.gameDirectory,
+    properties: ["openDirectory", "createDirectory"]
+  });
+  if (result.canceled || !result.filePaths[0]) return { ...launcherPreferences, canceled: true };
+  return moveManagedDataDirectory(result.filePaths[0]);
 }
 
 function cleanName(value) {
@@ -450,6 +558,424 @@ async function installModrinthPack(project) {
   });
 }
 
+
+
+const MICROSOFT_DEVICE_CODE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
+const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+const XBOX_USER_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate";
+const XBOX_XSTS_URL = "https://xsts.auth.xboxlive.com/xsts/authorize";
+const MINECRAFT_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_with_xbox";
+const MINECRAFT_PROFILE_URL = "https://api.minecraftservices.com/minecraft/profile";
+const MINECRAFT_ENTITLEMENTS_URL = "https://api.minecraftservices.com/entitlements/mcstore";
+const ADOPTIUM_ASSETS_URL = "https://api.adoptium.net/v3/assets/latest/";
+const MAX_JAVA_ARCHIVE_BYTES = 450 * 1024 * 1024;
+const MAX_JAVA_UNPACKED_BYTES = 1024 * 1024 * 1024;
+let authInProgress = false;
+let authCancelRequested = false;
+const activeLaunches = new Map();
+
+function getMinecraftRootPath() { return path.join(launcherPreferences.gameDirectory, "minecraft"); }
+function getMicrosoftClientIdPath() { return path.join(app.getPath("userData"), "microsoft-client.json"); }
+function getEncryptedAccountPath() { return path.join(app.getPath("userData"), "microsoft-account.bin"); }
+function sendWindowEvent(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
+}
+function reportAuthProgress(status, message, details = {}) {
+  sendWindowEvent("auth:progress", { status, message, ...details });
+}
+function reportLaunchProgress(instanceId, status, message) {
+  sendWindowEvent("launcher:progress", { instanceId, status, message });
+}
+async function readMicrosoftClientId() {
+  try {
+    const data = JSON.parse(await fs.readFile(getMicrosoftClientIdPath(), "utf8"));
+    return String(data.clientId || "").trim();
+  } catch (error) {
+    if (error.code !== "ENOENT") console.error("Could not read Microsoft app ID:", error);
+    return "";
+  }
+}
+async function saveMicrosoftClientId(value) {
+  const clientId = String(value || "").trim();
+  if (clientId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientId)) {
+    throw new Error("Paste the Microsoft Application (client) ID. It should look like a GUID.");
+  }
+  const target = getMicrosoftClientIdPath();
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target + ".tmp", JSON.stringify({ clientId }, null, 2), "utf8");
+  await fs.rename(target + ".tmp", target);
+  return { configured: Boolean(clientId), clientId };
+}
+async function readSavedAccount() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error("Secure account storage is unavailable on this Windows account.");
+    return JSON.parse(safeStorage.decryptString(await fs.readFile(getEncryptedAccountPath())));
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw new Error(error.message || "The saved Minecraft sign-in could not be read. Sign in again.");
+  }
+}
+async function saveAccount(account) {
+  if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows secure storage is unavailable, so Moon Launcher cannot safely save this account.");
+  const target = getEncryptedAccountPath();
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target + ".tmp", safeStorage.encryptString(JSON.stringify(account)));
+  await fs.rename(target + ".tmp", target);
+}
+async function getAccountStatus() {
+  const account = await readSavedAccount();
+  const clientId = await readMicrosoftClientId();
+  return account?.profile ? { signedIn: true, username: String(account.profile.name || "Minecraft player"), uuid: String(account.profile.id || ""), clientId } : { signedIn: false, clientId };
+}
+async function signOutMicrosoft() {
+  await fs.rm(getEncryptedAccountPath(), { force: true });
+  return { signedIn: false };
+}
+function sleep(milliseconds) { return new Promise((resolve) => setTimeout(resolve, milliseconds)); }
+async function readJsonResponse(response, context) {
+  let data = {};
+  try { data = await response.json(); } catch {}
+  if (!response.ok) {
+    const detail = String(data.error_description || data.Message || data.message || "").replace(/[\r\n]+/g, " ").slice(0, 220);
+    throw new Error(context + (detail ? ": " + detail : " (HTTP " + response.status + ")."));
+  }
+  return data;
+}
+async function postFormJson(url, fields, context) {
+  const body = new URLSearchParams();
+  for (const [key, value] of Object.entries(fields)) body.set(key, String(value));
+  const response = await fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+    body, signal: AbortSignal.timeout(30000)
+  });
+  return readJsonResponse(response, context);
+}
+async function postJson(url, payload, context) {
+  const response = await fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify(payload), signal: AbortSignal.timeout(30000)
+  });
+  return readJsonResponse(response, context);
+}
+async function fetchJson(url, context) {
+  const response = await fetch(url, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(30000) });
+  return readJsonResponse(response, context);
+}
+function xstsError(body) {
+  const code = Number(body?.XErr);
+  if (code === 2148916233) return "This Microsoft account needs an Xbox profile before it can sign in.";
+  if (code === 2148916238) return "This child account needs family approval before it can sign in.";
+  if (code === 2148916235) return "Xbox services are not available for this account's region.";
+  return "";
+}
+async function exchangeMicrosoftForMinecraft(msAccessToken, requireOwnership) {
+  reportAuthProgress("xbox", "Connecting to Xbox services…");
+  const xbox = await postJson(XBOX_USER_AUTH_URL, {
+    Properties: { AuthMethod: "RPS", SiteName: "user.auth.xboxlive.com", RpsTicket: "d=" + msAccessToken },
+    RelyingParty: "http://auth.xboxlive.com", TokenType: "JWT"
+  }, "Xbox sign-in failed");
+  const xboxUser = xbox?.DisplayClaims?.xui?.[0];
+  if (!xbox?.Token || !xboxUser?.uhs) throw new Error("Xbox did not return a valid sign-in token.");
+
+  reportAuthProgress("xsts", "Checking your Xbox account…");
+  const xstsResponse = await fetch(XBOX_XSTS_URL, {
+    method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      Properties: { SandboxId: "RETAIL", UserTokens: [xbox.Token] },
+      RelyingParty: "rp://api.minecraftservices.com/", TokenType: "JWT"
+    }), signal: AbortSignal.timeout(30000)
+  });
+  let xstsBody = {};
+  try { xstsBody = await xstsResponse.clone().json(); } catch {}
+  let xsts;
+  try { xsts = await readJsonResponse(xstsResponse, "Xbox account check failed"); }
+  catch (error) { throw new Error(xstsError(xstsBody) || error.message); }
+  const xstsUser = xsts?.DisplayClaims?.xui?.[0] || xboxUser;
+  if (!xsts?.Token || !xstsUser?.uhs) throw new Error("Xbox did not return a valid security token.");
+
+  reportAuthProgress("minecraft", "Checking Minecraft ownership…");
+  const minecraft = await postJson(MINECRAFT_LOGIN_URL, {
+    identityToken: "XBL3.0 x=" + xstsUser.uhs + ";" + xsts.Token
+  }, "Minecraft account sign-in failed");
+  if (!minecraft?.access_token) throw new Error("Minecraft did not return a valid game token.");
+
+  if (requireOwnership) {
+    const response = await fetch(MINECRAFT_ENTITLEMENTS_URL, {
+      headers: { "Authorization": "Bearer " + minecraft.access_token, "Accept": "application/json" },
+      signal: AbortSignal.timeout(30000)
+    });
+    const entitlements = await readJsonResponse(response, "Could not check Minecraft ownership");
+    if (!(entitlements.items || []).some((item) => ["game_minecraft", "product_minecraft"].includes(String(item.name || "").toLowerCase()))) {
+      throw new Error("This Microsoft account does not appear to own Minecraft: Java Edition. Sign in with the account that owns the game.");
+    }
+  }
+
+  const profileResponse = await fetch(MINECRAFT_PROFILE_URL, {
+    headers: { "Authorization": "Bearer " + minecraft.access_token, "Accept": "application/json" },
+    signal: AbortSignal.timeout(30000)
+  });
+  const profile = await readJsonResponse(profileResponse, "Could not load the Minecraft profile");
+  if (!profile?.id || !profile?.name) throw new Error("This account has no Minecraft: Java Edition profile. Finish creating one, then sign in again.");
+  return {
+    accessToken: minecraft.access_token,
+    expiresAt: Date.now() + Math.max(60, Number(minecraft.expires_in || 86400)) * 1000,
+    profile: { id: profile.id, name: profile.name },
+    xuid: String(xstsUser.xid || xboxUser.xid || "")
+  };
+}
+async function signInWithMicrosoft() {
+  if (authInProgress) throw new Error("A Microsoft sign-in is already running.");
+  const clientId = await readMicrosoftClientId();
+  if (!clientId) throw new Error("Add your Microsoft Application (client) ID in Settings first.");
+  authInProgress = true;
+  authCancelRequested = false;
+  try {
+    reportAuthProgress("starting", "Preparing Microsoft sign-in…");
+    const device = await postFormJson(MICROSOFT_DEVICE_CODE_URL, {
+      client_id: clientId, scope: "XboxLive.signin offline_access"
+    }, "Could not start Microsoft sign-in");
+    const verificationUri = String(device.verification_uri || "https://microsoft.com/devicelogin");
+    const verification = new URL(verificationUri);
+    if (verification.protocol !== "https:" || !["microsoft.com", "www.microsoft.com", "login.microsoftonline.com"].includes(verification.hostname.toLowerCase())) {
+      throw new Error("Microsoft returned an unexpected sign-in link.");
+    }
+    reportAuthProgress("device-code", "Enter this code on Microsoft's sign-in page.", {
+      userCode: String(device.user_code || ""), verificationUri
+    });
+
+    const expiresAt = Date.now() + Math.max(60, Number(device.expires_in || 900)) * 1000;
+    let interval = Math.max(5, Number(device.interval || 5)) * 1000;
+    let microsoftToken;
+    while (Date.now() < expiresAt) {
+      if (authCancelRequested) throw new Error("Microsoft sign-in was canceled.");
+      await sleep(interval);
+      const response = await fetch(MICROSOFT_TOKEN_URL, {
+        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+        body: new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+          client_id: clientId, device_code: String(device.device_code || "")
+        }), signal: AbortSignal.timeout(30000)
+      });
+      let result = {};
+      try { result = await response.json(); } catch {}
+      if (response.ok && result.access_token) { microsoftToken = result; break; }
+      if (result.error === "authorization_pending") continue;
+      if (result.error === "slow_down") { interval += 5000; continue; }
+      if (result.error === "authorization_declined") throw new Error("Microsoft sign-in was declined.");
+      if (result.error === "expired_token") throw new Error("The Microsoft sign-in code expired. Please try again.");
+      throw new Error(String(result.error_description || "Microsoft sign-in did not complete."));
+    }
+    if (!microsoftToken) throw new Error("The Microsoft sign-in code expired. Please try again.");
+    const session = await exchangeMicrosoftForMinecraft(microsoftToken.access_token, true);
+    const account = {
+      clientId, profile: session.profile, xuid: session.xuid,
+      microsoftAccessToken: microsoftToken.access_token,
+      microsoftExpiresAt: Date.now() + Math.max(60, Number(microsoftToken.expires_in || 3600)) * 1000,
+      microsoftRefreshToken: String(microsoftToken.refresh_token || ""),
+      minecraftAccessToken: session.accessToken, minecraftExpiresAt: session.expiresAt
+    };
+    if (!account.microsoftRefreshToken) throw new Error("Microsoft did not provide a refresh token. Check the app's public-client settings and try again.");
+    await saveAccount(account);
+    reportAuthProgress("signed-in", "Signed in as " + session.profile.name + ".");
+    return { signedIn: true, username: session.profile.name, uuid: session.profile.id };
+  } catch (error) {
+    reportAuthProgress("error", error.message || "Microsoft sign-in failed.");
+    throw error;
+  } finally { authInProgress = false; }
+}
+async function getUsableMinecraftAccount(instanceId) {
+  const account = await readSavedAccount();
+  if (!account?.profile?.id || !account.microsoftRefreshToken) throw new Error("Sign in with the Microsoft account that owns Minecraft: Java Edition first.");
+  const currentClientId = await readMicrosoftClientId();
+  if (!currentClientId || currentClientId !== account.clientId) throw new Error("The Microsoft app ID changed. Restore the ID used for sign-in, or sign out and sign in again.");
+  const now = Date.now() + 120000;
+  if (account.minecraftAccessToken && Number(account.minecraftExpiresAt) > now) return account;
+
+  let msAccessToken = account.microsoftAccessToken;
+  if (!msAccessToken || Number(account.microsoftExpiresAt) <= now) {
+    reportLaunchProgress(instanceId, "auth", "Refreshing Microsoft sign-in…");
+    const refreshed = await postFormJson(MICROSOFT_TOKEN_URL, {
+      client_id: account.clientId, grant_type: "refresh_token",
+      refresh_token: account.microsoftRefreshToken, scope: "XboxLive.signin offline_access"
+    }, "Microsoft sign-in expired. Sign in again to continue.");
+    msAccessToken = refreshed.access_token;
+    if (!msAccessToken) throw new Error("Microsoft did not refresh the sign-in. Please sign in again.");
+    account.microsoftAccessToken = msAccessToken;
+    account.microsoftExpiresAt = Date.now() + Math.max(60, Number(refreshed.expires_in || 3600)) * 1000;
+    if (refreshed.refresh_token) account.microsoftRefreshToken = refreshed.refresh_token;
+  }
+  const session = await exchangeMicrosoftForMinecraft(msAccessToken, false);
+  if (session.profile.id.toLowerCase() !== String(account.profile.id).toLowerCase()) {
+    throw new Error("Microsoft returned a different Minecraft account. Sign in again before launching.");
+  }
+  account.profile = session.profile;
+  account.xuid = session.xuid;
+  account.minecraftAccessToken = session.accessToken;
+  account.minecraftExpiresAt = session.expiresAt;
+  await saveAccount(account);
+  return account;
+}
+async function fetchMinecraftVersionDetails(versionId) {
+  const manifestResponse = await fetch(MANIFEST_URL, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(30000) });
+  const manifest = await readJsonResponse(manifestResponse, "Could not load Minecraft's version catalog");
+  const version = (manifest.versions || []).find((item) => item.id === versionId);
+  if (!version?.url) throw new Error("Minecraft version " + versionId + " was not found in the official catalog.");
+  const response = await fetch(version.url, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(30000) });
+  const details = await readJsonResponse(response, "Could not load Minecraft version details");
+  return { type: String(version.type || "release"), javaMajor: Number(details.javaVersion?.majorVersion || 8) };
+}
+async function getAdoptiumPackage(javaMajor) {
+  for (const imageType of ["jre", "jdk"]) {
+    const url = new URL(ADOPTIUM_ASSETS_URL + encodeURIComponent(javaMajor) + "/hotspot");
+    url.search = new URLSearchParams({ architecture: "x64", image_type: imageType, os: "windows", vendor: "eclipse", project: "jdk" }).toString();
+    const response = await fetch(url, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(30000) });
+    if (!response.ok) continue;
+    const assets = await response.json();
+    const result = Array.isArray(assets) && assets.find((asset) => asset.binary?.package?.link && asset.binary.package.checksum);
+    if (result) return result.binary.package;
+  }
+  return null;
+}
+async function findJavaExecutable(root) {
+  const pending = [{ directory: root, depth: 0 }];
+  while (pending.length) {
+    const current = pending.shift();
+    if (current.depth > 8) continue;
+    let entries;
+    try { entries = await fs.readdir(current.directory, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      const itemPath = path.join(current.directory, entry.name);
+      if (entry.isFile() && entry.name.toLowerCase() === "javaw.exe") return itemPath;
+      if (entry.isDirectory()) pending.push({ directory: itemPath, depth: current.depth + 1 });
+    }
+  }
+  return "";
+}
+async function installJavaRuntime(javaMajor, instanceId) {
+  const runtimeDirectory = path.join(getMinecraftRootPath(), "runtimes", "temurin-" + javaMajor);
+  const existing = await findJavaExecutable(runtimeDirectory);
+  if (existing) return existing;
+  reportLaunchProgress(instanceId, "installing-java", "Preparing Java " + javaMajor + " for Minecraft…");
+  const packageInfo = await getAdoptiumPackage(javaMajor);
+  if (!packageInfo?.link || !packageInfo?.checksum) throw new Error("A Java " + javaMajor + " runtime is not available for this Windows computer.");
+  const packageUrl = new URL(packageInfo.link);
+  if (packageUrl.protocol !== "https:" || !["github.com", "api.adoptium.net", "adoptium.net"].some((host) => packageUrl.hostname === host || packageUrl.hostname.endsWith("." + host))) {
+    throw new Error("The Java runtime download came from an unsupported location.");
+  }
+  reportLaunchProgress(instanceId, "downloading-java", "Downloading Java " + javaMajor + "…");
+  const response = await fetch(packageUrl, { headers: { "Accept": "application/octet-stream" }, signal: AbortSignal.timeout(600000) });
+  if (!response.ok) throw new Error("The Java runtime could not be downloaded (HTTP " + response.status + ").");
+  const archive = await readLimitedResponse(response, MAX_JAVA_ARCHIVE_BYTES);
+  if (crypto.createHash("sha256").update(archive).digest("hex").toLowerCase() !== String(packageInfo.checksum).toLowerCase()) {
+    throw new Error("The Java runtime download failed its SHA-256 check.");
+  }
+  let zip;
+  try { zip = new AdmZip(archive); } catch { throw new Error("The Java runtime download was not a valid ZIP file."); }
+  const entries = zip.getEntries();
+  if (!entries.length || entries.length > 16000) throw new Error("The Java runtime archive contains an unsupported number of files.");
+  const stageDirectory = runtimeDirectory + "." + crypto.randomUUID() + ".installing";
+  let unpackedBytes = 0;
+  await fs.mkdir(stageDirectory, { recursive: true });
+  try {
+    for (const entry of entries) {
+      const name = String(entry.entryName || "").replace(/\\/g, "/").replace(/\/$/, "");
+      if (!name) continue;
+      const relative = safeInstanceRelativePath(name);
+      const mode = (Number(entry.header?.attr || 0) >>> 16) & 0xf000;
+      if (mode === 0xa000) throw new Error("The Java runtime archive contains an unexpected symbolic link.");
+      const destination = resolveInstanceFile(stageDirectory, relative);
+      if (entry.isDirectory) { await fs.mkdir(destination, { recursive: true }); continue; }
+      const declared = Number(entry.header?.size || 0);
+      unpackedBytes += declared;
+      if (!Number.isSafeInteger(declared) || declared < 0 || unpackedBytes > MAX_JAVA_UNPACKED_BYTES) throw new Error("The Java runtime archive is larger than Moon Launcher allows.");
+      const bytes = entry.getData();
+      if (bytes.length !== declared) throw new Error("A Java runtime file did not unpack correctly.");
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      await fs.writeFile(destination, bytes, { flag: "wx" });
+    }
+    const javaPath = await findJavaExecutable(stageDirectory);
+    if (!javaPath) throw new Error("The Java runtime archive did not contain javaw.exe.");
+    await fs.mkdir(path.dirname(runtimeDirectory), { recursive: true });
+    await fs.rm(runtimeDirectory, { recursive: true, force: true });
+    await fs.rename(stageDirectory, runtimeDirectory);
+    return path.join(runtimeDirectory, path.relative(stageDirectory, javaPath));
+  } catch (error) {
+    await fs.rm(stageDirectory, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+async function launchInstance(instanceId) {
+  const id = String(instanceId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("This Minecraft instance is invalid.");
+  if (activeLaunches.has(id)) throw new Error("This Minecraft instance is already running.");
+  const instances = await readInstances();
+  const instance = instances.find((item) => item.id === id);
+  if (!instance) throw new Error("This Minecraft instance could not be found.");
+  const loader = String(instance.pack?.loader || "Vanilla");
+  if (loader !== "Vanilla") throw new Error("This pack uses " + loader + ". Its files are installed, but mod loader installation is not connected yet.");
+
+  const account = await getUsableMinecraftAccount(id);
+  reportLaunchProgress(id, "preparing", "Checking Minecraft files…");
+  const versionDetails = await fetchMinecraftVersionDetails(instance.minecraftVersion);
+  const javaPath = await installJavaRuntime(versionDetails.javaMajor, id);
+  const minecraftRoot = getMinecraftRootPath();
+  const instanceDirectory = path.join(getInstancesPath(), id);
+  await fs.mkdir(minecraftRoot, { recursive: true });
+  await fs.mkdir(instanceDirectory, { recursive: true });
+  reportLaunchProgress(id, "downloading-game", "Installing or updating Minecraft " + instance.minecraftVersion + "…");
+
+  const { Client } = require("minecraft-launcher-core");
+  const launcher = new Client();
+  let lastProgressAt = 0;
+  launcher.on("progress", () => {
+    const now = Date.now();
+    if (now - lastProgressAt < 350) return;
+    lastProgressAt = now;
+    reportLaunchProgress(id, "downloading-game", "Downloading Minecraft files…");
+  });
+  const totalMemoryGb = Math.floor(os.totalmem() / 1024 / 1024 / 1024);
+  const requestedMemoryGb = launcherPreferences.memoryGb === "auto"
+    ? Math.max(2, Math.min(6, Math.floor(totalMemoryGb / 3)))
+    : Number(launcherPreferences.memoryGb);
+  const maximumMemoryGb = Math.max(2, Math.min(requestedMemoryGb, Math.max(2, totalMemoryGb - 1)));
+  let gameProcess;
+  try {
+    gameProcess = await launcher.launch({
+      authorization: {
+        access_token: account.minecraftAccessToken, client_token: crypto.randomUUID(),
+        uuid: account.profile.id, name: account.profile.name, user_properties: "{}",
+        meta: { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
+      },
+      root: minecraftRoot,
+      version: { number: instance.minecraftVersion, type: versionDetails.type },
+      javaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
+      overrides: { gameDirectory: instanceDirectory, maxSockets: launcherPreferences.downloadConnections },
+      window: { fullscreen: launcherPreferences.fullscreen }
+    });
+  } catch (error) {
+    reportLaunchProgress(id, "error", "Minecraft could not start.");
+    if (error.code === "ENOENT") throw new Error("Java could not start. Try reinstalling this instance's Java runtime.");
+    throw new Error(error.message || "Minecraft could not start.");
+  }
+  activeLaunches.set(id, gameProcess);
+  gameProcess.once("error", (error) => {
+    activeLaunches.delete(id);
+    reportLaunchProgress(id, "error", error.code === "ENOENT" ? "Java could not start." : "Minecraft failed to start.");
+  });
+  gameProcess.once("close", (code) => {
+    activeLaunches.delete(id);
+    reportLaunchProgress(id, "closed", code === 0 ? "Minecraft closed." : "Minecraft closed with an error.");
+  });
+  const latestInstances = await readInstances();
+  const index = latestInstances.findIndex((item) => item.id === id);
+  if (index >= 0 && latestInstances[index].installState !== "installed") {
+    latestInstances[index] = { ...latestInstances[index], installState: "installed" };
+    await writeInstances(latestInstances);
+  }
+  reportLaunchProgress(id, "running", "Minecraft is running.");
+  return { started: true, instanceId: id };
+}
+
 function readPackManifest(zipPath) {
   const zip = new AdmZip(zipPath);
   const mrpackEntry = zip.getEntry("modrinth.index.json");
@@ -552,9 +1078,29 @@ ipcMain.handle("modpacks:import", importModpack);
 ipcMain.handle("modpacks:search", (_event, query) => searchModpacks(query));
 ipcMain.handle("modpacks:install", (_event, project) => installModrinthPack(project || {}));
 ipcMain.handle("modpacks:open", (_event, slug) => openProject(slug));
+ipcMain.handle("auth:status", getAccountStatus);
+ipcMain.handle("auth:save-client-id", (_event, clientId) => saveMicrosoftClientId(clientId));
+ipcMain.handle("auth:sign-in", signInWithMicrosoft);
+ipcMain.handle("auth:cancel", () => { authCancelRequested = true; return true; });
+ipcMain.handle("auth:sign-out", signOutMicrosoft);
+ipcMain.handle("auth:open-verification", async (_event, value) => {
+  const url = new URL(String(value || ""));
+  if (url.protocol !== "https:" || !["microsoft.com", "www.microsoft.com", "login.microsoftonline.com"].includes(url.hostname.toLowerCase())) throw new Error("This Microsoft sign-in link is not trusted.");
+  await shell.openExternal(url.href);
+  return true;
+});
+ipcMain.handle("auth:open-registration", async () => { await shell.openExternal("https://entra.microsoft.com/"); return true; });
+ipcMain.handle("launcher:launch-instance", (_event, instanceId) => launchInstance(instanceId));
+ipcMain.handle("settings:get", () => ({ ...launcherPreferences }));
+ipcMain.handle("settings:save", (_event, settings = {}) => writeLauncherPreferences({
+  memoryGb: settings.memoryGb,
+  downloadConnections: settings.downloadConnections,
+  fullscreen: settings.fullscreen === true
+}));
+ipcMain.handle("settings:choose-directory", chooseLauncherDirectory);
 ipcMain.handle("launcher:open-data-folder", async () => {
   await fs.mkdir(getInstancesPath(), { recursive: true });
-  return shell.openPath(getInstancesPath());
+  return shell.openPath(launcherPreferences.gameDirectory);
 });
 
 ipcMain.handle("window:minimize", () => {
@@ -591,7 +1137,8 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "index.html"));
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await loadLauncherPreferences();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

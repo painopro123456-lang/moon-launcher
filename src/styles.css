@@ -150,3 +150,51 @@ button { color: inherit; cursor: pointer; }
 .modpack-card .project-link { margin: 0; padding: 0; border: 0; background: transparent; color: #bfaaff; font-size: 10px; font-weight: 700; }
 .modpack-card .project-link:hover { color: #ded2ff; }
 .install-pack-button:disabled { cursor: progress; opacity: .78; }
+
+
+.account-card { cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+.account-card:hover { border-color: #a98cff45; background: #a98cff0a; }
+.settings-group { margin: 0 0 24px; }
+.settings-group-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+.settings-group-heading h3 { margin: 5px 0 0; font-size: 15px; letter-spacing: -.025em; }
+.settings-group .settings-list { border-radius: 15px; }
+.settings-group .setting-row { gap: 18px; min-height: 76px; }
+.settings-group .setting-row > div:first-child { min-width: 0; }
+.setting-row-stacked { align-items: stretch; flex-direction: column; }
+.setting-row-stacked > div:first-child { margin-bottom: 2px; }
+.setting-actions, .input-action-row, .directory-row { display: flex; align-items: center; gap: 9px; }
+.input-action-row { flex-wrap: wrap; }
+.setting-input { min-width: 250px; flex: 1; height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: 9px; outline: 0; background: #100e16; color: var(--text); font-size: 11px; }
+.setting-input:focus { border-color: #a98cff88; box-shadow: 0 0 0 3px #a98cff12; }
+.setting-select { width: 160px; flex: 0 0 160px; }
+.setting-select select { width: 100%; height: 38px; padding: 0 34px 0 11px; appearance: none; border: 1px solid var(--border); border-radius: 9px; outline: 0; background: #1b1824; color: var(--text); font-size: 11px; cursor: pointer; }
+.setting-select select:focus { border-color: #a98cff88; }
+.setting-select .select-caret { top: 14px; right: 13px; }
+.directory-row { justify-content: space-between; flex-wrap: wrap; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: #100e16; }
+.directory-row code { overflow-wrap: anywhere; color: #d8cff0; font-size: 10px; line-height: 1.5; }
+.directory-row .setting-actions { flex: 0 0 auto; }
+.settings-save-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px 0; }
+.settings-save-row span { color: var(--quiet); font-size: 10px; }
+.settings-save-row button:disabled { cursor: wait; opacity: .65; }
+.switch { position: relative; display: inline-flex; flex: 0 0 43px; align-items: center; width: 43px; height: 25px; cursor: pointer; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.switch-track { width: 43px; height: 25px; border: 1px solid var(--border); border-radius: 99px; background: #292633; transition: .2s ease; }
+.switch-track::after { content: ""; position: absolute; top: 4px; left: 4px; width: 15px; height: 15px; border-radius: 50%; background: #aaa5b8; transition: .2s ease; }
+.switch input:checked + .switch-track { border-color: #a98cff90; background: #a98cff55; }
+.switch input:checked + .switch-track::after { left: 24px; background: #f4edff; box-shadow: 0 0 9px #c1a5ff80; }
+.switch input:focus-visible + .switch-track { outline: 2px solid #c0a8ff; outline-offset: 2px; }
+.ready-pill { color: #9ee3bd; background: #52be8614; }
+.auth-dialog { width: min(480px,calc(100vw - 30px)); }
+.auth-instructions { margin: 12px 0 17px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.auth-code-panel { display: grid; gap: 12px; padding: 16px; border: 1px solid #a98cff32; border-radius: 13px; background: #a98cff0b; }
+.auth-code-panel > .field-label { color: var(--muted); font-size: 10px; }
+.auth-code-panel > strong { color: #f4edff; font-family: ui-monospace,Consolas,monospace; font-size: 27px; letter-spacing: .14em; }
+.auth-actions { display: flex; gap: 9px; }
+.auth-actions button { flex: 1; }
+.auth-cancel { margin: 14px 0 0; padding: 4px 0; }
+@media (max-width: 760px) {
+  .setting-row { align-items: flex-start; flex-direction: column; }
+  .setting-actions, .input-action-row, .directory-row { width: 100%; }
+  .setting-select { width: 100%; flex: 1 1 auto; }
+  .directory-row { align-items: flex-start; flex-direction: column; }
+}

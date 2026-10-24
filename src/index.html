@@ -22,7 +22,7 @@
         <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="account-card">
+        <div class="account-card" role="button" tabindex="0" aria-label="Open Minecraft account settings">
           <div class="avatar">?</div>
           <div><strong>Not signed in</strong><span>Minecraft account</span></div>
         </div>
@@ -38,7 +38,7 @@
         </div>
         <div class="topbar-right">
           <div class="catalog-state"><span class="status-dot"></span><span id="catalog-label">Checking Minecraft catalog</span></div>
-          <button class="icon-button" id="open-folder" title="Open instance folder" aria-label="Open instance folder">↗</button>
+          <button class="icon-button" id="open-folder" title="Open Moon Launcher folder" aria-label="Open Moon Launcher folder">↗</button>
           <div class="window-controls" aria-label="Window controls">
             <button class="window-control" id="window-minimize" type="button" title="Minimize" aria-label="Minimize">−</button>
             <button class="window-control" id="window-maximize" type="button" title="Maximize" aria-label="Maximize">□</button>
@@ -73,7 +73,7 @@
 
         <div class="notice-card">
           <div class="notice-icon">✦</div>
-          <div><strong>Launcher engine is being connected</strong><p>This preview can browse Minecraft versions and organize instances. Microsoft sign-in, game downloads, and launching are not connected yet.</p></div>
+          <div><strong>Launcher engine is being connected</strong><p>Create vanilla profiles, sign in with Microsoft, and install or launch Minecraft from Moon Launcher.</p></div>
         </div>
       </section>
 
@@ -81,7 +81,7 @@
         <div class="page-intro">
           <div class="eyebrow">DISCOVER SOMETHING NEW</div>
           <h2>Modpacks</h2>
-          <p>Find a pack to install into its own instance, or import a .mrpack file. Minecraft and loader setup are still in progress.</p>
+          <p>Find a Modrinth pack to install into its own instance, or import a .mrpack file.</p>
         </div>
         <div class="search-row">
           <label class="search-box"><span>⌕</span><input id="modpack-query" type="search" placeholder="Search modpacks..." maxlength="100"></label>
@@ -95,13 +95,60 @@
         <div class="page-intro">
           <div class="eyebrow">MAKE IT YOURS</div>
           <h2>Settings</h2>
-          <p>Moon Launcher is being built in stages.</p>
+          <p>Set up your account, Minecraft files, and how the game starts.</p>
         </div>
-        <div class="settings-list">
-          <div class="setting-row"><div><strong>Microsoft account</strong><span>Secure account sign-in is not connected yet.</span></div><span class="coming-pill">Coming next</span></div>
-          <div class="setting-row"><div><strong>Game installation</strong><span>Version downloads and mod loader installation are not connected yet.</span></div><span class="coming-pill">Coming next</span></div>
-          <div class="setting-row"><div><strong>Modpack installs</strong><span>Modrinth packs can download into their own folders. Minecraft and loader setup are still in progress.</span></div><span class="coming-pill">In progress</span></div>
-          <div class="setting-row"><div><strong>Instance data</strong><span>Open Moon Launcher’s local instance folder.</span></div><button class="text-button" id="open-folder-settings">Open folder ↗</button></div>
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">ACCOUNT</div><h3>Minecraft sign-in</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row account-setting">
+              <div><strong id="settings-account-name">Not signed in</strong><span id="settings-account-detail">Sign in with the Microsoft account that owns Minecraft: Java Edition.</span></div>
+              <div class="setting-actions"><button class="secondary-button" id="sign-in-button">Sign in</button><button class="text-button" id="sign-out-button" hidden>Sign out</button></div>
+            </div>
+            <div class="setting-row setting-row-stacked">
+              <div><strong>Microsoft Application (client) ID</strong><span>Use your public app ID. Moon Launcher never asks for your Microsoft password.</span></div>
+              <div class="input-action-row"><input id="microsoft-client-id" class="setting-input" type="text" spellcheck="false" autocomplete="off" placeholder="00000000-0000-0000-0000-000000000000"><button class="secondary-button" id="save-client-id">Save ID</button><button class="text-button" id="open-app-registration">How to get an ID ↗</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">GAME FILES</div><h3>Your Moon Launcher folder</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row setting-row-stacked">
+              <div><strong>Launcher directory</strong><span>Instances, Minecraft files, and managed Java runtimes are kept here, separately from the official launcher.</span></div>
+              <div class="directory-row"><code id="game-directory-path">Loading folder…</code><div class="setting-actions"><button class="secondary-button" id="change-game-directory">Choose folder</button><button class="text-button" id="open-folder-settings">Open ↗</button></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">PERFORMANCE</div><h3>Game preferences</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row">
+              <div><strong>Memory for Minecraft</strong><span>More memory can help large modpacks. The automatic option adapts to this PC.</span></div>
+              <label class="select-wrap setting-select"><select id="memory-setting" aria-label="Memory for Minecraft"><option value="auto">Automatic</option><option value="2">2 GB</option><option value="4">4 GB</option><option value="6">6 GB</option><option value="8">8 GB</option><option value="12">12 GB</option><option value="16">16 GB</option></select><span class="select-caret"></span></label>
+            </div>
+            <div class="setting-row">
+              <div><strong>Download connections</strong><span>More connections may speed up game downloads on a stable network.</span></div>
+              <label class="select-wrap setting-select"><select id="connections-setting" aria-label="Download connections"><option value="2">2 connections</option><option value="4">4 connections</option><option value="6">6 connections</option><option value="8">8 connections</option></select><span class="select-caret"></span></label>
+            </div>
+            <div class="setting-row">
+              <div><strong>Start Minecraft fullscreen</strong><span>Launch new game sessions in fullscreen.</span></div>
+              <label class="switch"><input id="fullscreen-setting" type="checkbox"><span class="switch-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <div><strong>Java runtime</strong><span>Moon Launcher downloads the correct Java runtime and keeps it in the launcher directory.</span></div><span class="coming-pill ready-pill">Managed</span>
+            </div>
+          </div>
+          <div class="settings-save-row"><span id="settings-save-status" aria-live="polite">Changes save when you press Save settings.</span><button class="primary-button" id="save-launcher-settings">Save settings</button></div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">MODPACKS</div><h3>Pack support</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row"><div><strong>Modrinth packs</strong><span>Pack files download into their own instance folder. Vanilla instances can install and launch.</span></div><span class="coming-pill ready-pill">Available</span></div>
+            <div class="setting-row"><div><strong>Mod loader packs</strong><span>Fabric, Forge, and other loader setup is still being added, so those packs cannot launch yet.</span></div><span class="coming-pill">In progress</span></div>
+          </div>
         </div>
       </section>
     </main>
@@ -119,9 +166,16 @@
           <span class="select-caret" aria-hidden="true"></span>
         </span>
       </label>
-      <p class="dialog-note">This creates an instance entry. Downloading and launching the game are still in progress.</p>
+      <p class="dialog-note">Vanilla instances install Minecraft when you first press Install & Play.</p>
       <button class="primary-button dialog-submit" value="create">Create instance</button>
     </form>
+  </dialog>
+
+  <dialog id="auth-dialog" class="dialog auth-dialog">
+    <div class="dialog-header"><div><div class="eyebrow">MICROSOFT DEVICE SIGN-IN</div><h2>Sign in to Minecraft</h2></div><button type="button" class="close-button" id="close-auth-dialog" aria-label="Close">×</button></div>
+    <p class="auth-instructions" id="auth-status-message">Moon Launcher will give you a one-time code. Enter it on Microsoft's sign-in page.</p>
+    <div id="auth-code-panel" class="auth-code-panel" hidden><span class="field-label">Your one-time code</span><strong id="auth-user-code">———</strong><div class="auth-actions"><button class="secondary-button" id="copy-auth-code">Copy code</button><button class="primary-button" id="open-auth-browser">Open Microsoft sign-in</button></div></div>
+    <button class="text-button auth-cancel" id="cancel-auth">Cancel sign-in</button>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
