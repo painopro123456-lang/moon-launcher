@@ -695,28 +695,8 @@ async function getAccountStatus() {
   const account = await readSavedAccount();
   const clientId = await readMicrosoftClientId();
   return account?.profile
-    ? { signedIn: true, username: String(account.profile.name || "Minecraft player"), uuid: String(account.profile.id || ""), clientId, offline: account.offline === true }
-    : { signedIn: false, clientId, offline: false };
-}
-function makeOfflineUuid(username) {
-  const bytes = crypto.createHash("md5").update("OfflinePlayer:" + username, "utf8").digest();
-  bytes[6] = (bytes[6] & 0x0f) | 0x30;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = bytes.toString("hex");
-  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
-}
-async function signInOffline(usernameInput) {
-  const username = String(usernameInput || "").trim();
-  if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) throw new Error("Choose a Minecraft name with 3–16 letters, numbers, or underscores.");
-  const profile = { id: makeOfflineUuid(username), name: username };
-  const account = {
-    offline: true, clientId: "offline", profile, xuid: "",
-    microsoftAccessToken: "", microsoftExpiresAt: 0, microsoftRefreshToken: "",
-    minecraftAccessToken: "0", minecraftExpiresAt: Number.MAX_SAFE_INTEGER
-  };
-  await saveAccount(account);
-  reportAuthProgress("signed-in", "Using offline profile " + username + ". Single-player only; Microsoft authentication is not active.");
-  return { signedIn: true, username, uuid: profile.id, offline: true };
+    ? { signedIn: true, username: String(account.profile.name || "Minecraft player"), uuid: String(account.profile.id || ""), clientId }
+    : { signedIn: false, clientId };
 }
 async function signOutMicrosoft() {
   await fs.rm(getEncryptedAccountPath(), { force: true });
@@ -1109,12 +1089,12 @@ async function launchInstance(instanceId) {
   try {
     gameProcess = await launcher.launch({
       authorization: {
-        access_token: account.offline ? "0" : account.minecraftAccessToken,
+        access_token: account.minecraftAccessToken,
         client_token: crypto.randomUUID(),
         uuid: account.profile.id,
         name: account.profile.name,
         user_properties: "{}",
-        meta: account.offline ? { type: "mojang", demo: false } : { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
+        meta: { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
       },
       root: minecraftRoot,
       version: { number: instance.minecraftVersion, type: versionDetails.type },
@@ -1395,7 +1375,6 @@ ipcMain.handle("auth:remove-profile", (_event, uuid) => removeSavedAccount(uuid)
 ipcMain.handle("auth:status", getAccountStatus);
 ipcMain.handle("auth:save-client-id", (_event, clientId) => saveMicrosoftClientId(clientId));
 ipcMain.handle("auth:sign-in", signInWithMicrosoft);
-ipcMain.handle("auth:sign-in-offline", (_event, username) => signInOffline(username));
 ipcMain.handle("auth:cancel", () => { authCancelRequested = true; return true; });
 ipcMain.handle("auth:sign-out", signOutMicrosoft);
 ipcMain.handle("auth:open-verification", async (_event, value) => {
