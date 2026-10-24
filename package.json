@@ -1,0 +1,24 @@
+{
+  "name": "moon-launcher",
+  "productName": "Moon Launcher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Windows Minecraft launcher for managing versions, instances, and modpacks.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "dependencies": {
+    "@xmcl/core": "^2.16.2",
+    "@xmcl/installer": "^6.3.6",
+    "@xmcl/modrinth": "^2.5.3",
+    "@xmcl/user": "^4.4.2",
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "electron": "45.0.0"
+  }
+}
