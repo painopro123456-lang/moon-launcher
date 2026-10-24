@@ -1184,11 +1184,16 @@ async function importModpack() {
   });
 }
 
-async function searchModpacks(query) {
+async function searchModpacks(input) {
+  const options = input && typeof input === "object" ? input : { query: input };
+  const query = String(options.query || "").slice(0, 100);
+  const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
+  const limit = 20;
   const params = new URLSearchParams({
-    query: String(query || "").slice(0, 100),
+    query,
     facets: '[["project_type:modpack"]]',
-    limit: "20",
+    limit: String(limit),
+    offset: String((page - 1) * limit),
     index: "downloads"
   });
   const response = await fetch(MODRINTH_API + "/search?" + params.toString(), {
@@ -1199,14 +1204,19 @@ async function searchModpacks(query) {
   });
   if (!response.ok) throw new Error("Modrinth search returned HTTP " + response.status);
   const data = await response.json();
-  return (data.hits || []).map((project) => ({
-    id: project.project_id,
-    slug: project.slug,
-    title: project.title,
-    description: project.description,
-    iconUrl: project.icon_url,
-    downloads: project.downloads
-  }));
+  return {
+    projects: (data.hits || []).map((project) => ({
+      id: project.project_id,
+      slug: project.slug,
+      title: project.title,
+      description: project.description,
+      iconUrl: project.icon_url,
+      downloads: project.downloads
+    })),
+    total: Number(data.total) || 0,
+    page,
+    pageSize: limit
+  };
 }
 
 function openProject(slug) {
