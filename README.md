@@ -22,7 +22,7 @@ GitHub keeps each build artifact for 14 days. This preview installer is unsigned
 
 ## What is not ready yet
 
-This download is an early preview, not a complete playable Minecraft launcher. It does **not** download or install Minecraft or modpack files, sign into Microsoft, or launch the game. The launch action remains disabled.
+This download is an early preview, not a complete playable Minecraft launcher. It does **not** download or install Minecraft or modpack files, sign into Microsoft, or launch the game. The launch action remains disabled. The Minecraft engine still needs to be connected.
 
 ## Run from source
 
@@ -33,6 +33,6 @@ npm install
 npm start
 ```
 
-The project uses the MIT-licensed `@xmcl/*` launcher packages as the planned Minecraft engine. The app must never ask for or store a Microsoft account password. A Microsoft app registration is needed before publishing account sign-in.
+The app must never ask for or store a Microsoft account password. A Microsoft app registration is needed before publishing account sign-in.
 
 Moon Launcher is an independent project and is not affiliated with Mojang or Microsoft.
