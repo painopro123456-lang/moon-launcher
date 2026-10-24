@@ -563,6 +563,8 @@ async function installModrinthPack(project) {
 
 const MICROSOFT_AUTHORIZE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
 const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+// Public OAuth client ID for Moon Launcher. This is an identifier, not a secret.
+const DEFAULT_MICROSOFT_CLIENT_ID = "09e6a2a2-90ee-47a6-92c4-f8810958de91";
 const XBOX_USER_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate";
 const XBOX_XSTS_URL = "https://xsts.auth.xboxlive.com/xsts/authorize";
 const MINECRAFT_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_with_xbox";
@@ -593,10 +595,11 @@ function reportLaunchProgress(instanceId, status, message) {
 async function readMicrosoftClientId() {
   try {
     const data = JSON.parse(await fs.readFile(getMicrosoftClientIdPath(), "utf8"));
-    return String(data.clientId || "").trim();
+    const savedClientId = String(data.clientId || "").trim();
+    return savedClientId || DEFAULT_MICROSOFT_CLIENT_ID;
   } catch (error) {
     if (error.code !== "ENOENT") console.error("Could not read Microsoft app ID:", error);
-    return "";
+    return DEFAULT_MICROSOFT_CLIENT_ID;
   }
 }
 async function saveMicrosoftClientId(value) {
