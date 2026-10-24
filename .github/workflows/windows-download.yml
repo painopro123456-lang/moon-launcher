@@ -24,6 +24,12 @@ jobs:
         with:
           node-version: "22.16.0"
 
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/main.cjs
+          node --check src/preload.cjs
+          node --check src/renderer.js
+
       - name: Install app dependencies
         run: npm install --no-audit --no-fund
 
