@@ -213,3 +213,40 @@ button { color: inherit; cursor: pointer; }
 .quick-version-tag { margin-left: auto; padding: 4px 6px; border-radius: 6px; background: #a98cff18; color: #cbb9ff; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .quick-version-tag.pvp-tag { background: #81a8ff18; color: #a9c4ff; }
 @media (max-width: 760px) { .quick-version-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .quick-versions-heading { align-items: flex-start; flex-direction: column; } }
+
+
+/* Feature additions: keep the dark glass look while making management screens clearer. */
+.hero-card { background-size: cover; background-position: center; transition: background-image .2s ease; }
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 20px; }
+.hero-actions .primary-button { margin-top: 0; }
+.hero-actions .secondary-button { min-height: 37px; }
+.hero-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.manager-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin: 18px 0; padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: linear-gradient(145deg,#ffffff08,#a98cff05); }
+.manager-toolbar .field-label { flex: 1 1 250px; }
+.manager-toolbar .field-label select { height: 38px; }
+.manager-toolbar .field-label .select-caret { top: 14px; }
+.mod-list, .server-list { display: grid; gap: 9px; }
+.mod-row, .server-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 13px; background: linear-gradient(145deg,#ffffff08,#a98cff04); transition: border-color .16s ease, background .16s ease; }
+.mod-row:hover, .server-card:hover { border-color: #a98cff45; background: linear-gradient(145deg,#ffffff0d,#a98cff09); }
+.mod-row-info, .server-card-info { display: grid; gap: 6px; min-width: 0; }
+.mod-row-info strong { overflow-wrap: anywhere; color: var(--text); font-size: 11px; }
+.mod-row-info span { color: var(--muted); font-size: 10px; }
+.server-card-info h3 { margin: 0; color: var(--text); font-size: 13px; }
+.server-card-info code { overflow-wrap: anywhere; color: #c6b5f2; font-size: 11px; }
+.mod-row .setting-actions, .server-card .setting-actions { flex: 0 0 auto; }
+.server-form { display: grid; grid-template-columns: minmax(140px, .8fr) minmax(220px, 1.4fr) auto; align-items: end; gap: 12px; margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+.server-form .field-label input { width: 100%; box-sizing: border-box; }
+.server-form .primary-button { min-height: 40px; white-space: nowrap; }
+.account-profiles-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.account-profiles-row select { min-width: 210px; max-width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px; background: #1b1824; color: var(--text); font-size: 11px; }
+.account-profiles-row button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 900px) {
+  .server-form { grid-template-columns: 1fr; }
+  .server-form .primary-button { justify-self: start; }
+}
+@media (max-width: 760px) {
+  .mod-row, .server-card { align-items: flex-start; flex-direction: column; }
+  .mod-row .setting-actions, .server-card .setting-actions { width: 100%; }
+  .account-profiles-row { align-items: stretch; flex-direction: column; }
+  .account-profiles-row select { width: 100%; }
+}
