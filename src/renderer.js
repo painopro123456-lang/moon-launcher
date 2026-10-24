@@ -135,7 +135,7 @@ function renderAccount(status) {
   $(".avatar").textContent = status?.signedIn ? String(name || "M").slice(0, 1).toUpperCase() : "?";
   $("#settings-account-name").textContent = status?.signedIn ? "Signed in as " + name : "Not signed in";
   $("#settings-account-detail").textContent = status?.signedIn
-    ? (status.offline ? "Offline profile active. Single-player only; Microsoft sign-in is not active." : "This Microsoft account is ready for Minecraft.")
+    ? "This Microsoft account is ready for Minecraft."
     : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
   const clientInput = $("#microsoft-client-id");
   if (clientInput && typeof status?.clientId === "string" && clientInput.dataset.dirty !== "true") {
@@ -675,23 +675,6 @@ $(".account-card").addEventListener("click", () => { if (state.account?.signedIn
 $(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
-$("#offline-sign-in").addEventListener("click", async () => {
-  const input = $("#offline-username");
-  try {
-    const account = await api.signInOffline(input.value);
-    renderAccount(account);
-    $("#auth-status-message").textContent = "Offline profile active: " + account.username + ". Use single-player; online authentication is unavailable.";
-    $("#auth-code-panel").hidden = true;
-    showToast("Offline profile set to " + account.username + ".");
-    setTimeout(() => { if ($("#auth-dialog").open) $("#auth-dialog").close(); }, 900);
-  } catch (error) {
-    $("#auth-status-message").textContent = error.message || "Could not create offline profile.";
-    showToast(error.message || "Could not create offline profile.");
-  }
-});
-$("#offline-username").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") { event.preventDefault(); $("#offline-sign-in").click(); }
-});
 $("#microsoft-client-id").addEventListener("input", () => { $("#microsoft-client-id").dataset.dirty = "true"; });
 $("#save-microsoft-client-id").addEventListener("click", async () => {
   const input = $("#microsoft-client-id");
