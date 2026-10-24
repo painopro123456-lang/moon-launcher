@@ -259,3 +259,7 @@ button { color: inherit; cursor: pointer; }
 .pagination-button:disabled { opacity: .38; cursor: not-allowed; }
 .pagination-page { min-width: 95px; color: #d8d0e8; font-size: 11px; text-align: center; font-weight: 700; }
 @media (max-width: 760px) { .modpack-pagination { align-items: stretch; flex-direction: column; } .pagination-controls { justify-content: space-between; } }
+
+.setting-help { display: block; color: var(--quiet); font-size: 10px; line-height: 1.5; }
+#microsoft-client-id { min-width: min(330px, 100%); }
+#save-microsoft-client-id:disabled { opacity: .6; cursor: wait; }
