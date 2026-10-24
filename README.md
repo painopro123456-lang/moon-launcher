@@ -2,33 +2,37 @@
 
 A Windows desktop launcher project for managing Minecraft versions, isolated instances, and modpacks.
 
-## Current preview
+## Download the Windows preview
 
-- Reads the current Minecraft version catalog.
-- Saves named local instance entries.
-- Searches Modrinth modpacks.
-- Reads metadata from Modrinth \`.mrpack\` and CurseForge \`.zip\` manifests.
+Every update to the `main` branch builds a Windows 64-bit installer.
 
-This is an early application scaffold. It does **not** download or install Minecraft, download modpack files, sign into Microsoft, or launch the game yet. The launch action remains disabled until those pieces are implemented.
+1. Open the repository's **Actions** tab.
+2. Choose the newest successful **Windows download** run.
+3. Under **Artifacts**, download **Moon-Launcher-Windows-x64**.
+4. Unzip the download, then open `Moon-Launcher-Setup-0.1.0-x64.exe` and follow the installer.
 
-## Run the preview
+GitHub keeps each build artifact for 14 days. This preview installer is unsigned, so Windows may show an unknown-publisher prompt.
+
+## What this preview can do
+
+- Browse the Minecraft version catalog.
+- Save named local instance entries.
+- Search Modrinth modpacks.
+- Read metadata from Modrinth `.mrpack` and CurseForge `.zip` manifests.
+
+## What is not ready yet
+
+This download is an early preview, not a complete playable Minecraft launcher. It does **not** download or install Minecraft or modpack files, sign into Microsoft, or launch the game. The launch action remains disabled.
+
+## Run from source
 
 Install Node.js 22.16 or newer, then run:
 
-\`\`\`sh
+```sh
 npm install
 npm start
-\`\`\`
+```
 
-## Planned launcher work
+The project uses the MIT-licensed `@xmcl/*` launcher packages as the planned Minecraft engine. The app must never ask for or store a Microsoft account password. A Microsoft app registration is needed before publishing account sign-in.
 
-1. Microsoft sign-in using the official browser-based account flow.
-2. Minecraft and Java installation, followed by secure game launching through the XMCL core packages.
-3. Full modpack installation and updates for Modrinth and CurseForge, including the platforms' download restrictions.
-4. Windows packaging and release builds.
-
-The app must never ask for or store a Microsoft account password. A Microsoft app registration is needed before publishing account sign-in.
-
-## Project notes
-
-Moon Launcher is an independent project and is not affiliated with Mojang or Microsoft. It uses the MIT-licensed \`@xmcl/*\` launcher packages as its planned Minecraft engine.
+Moon Launcher is an independent project and is not affiliated with Mojang or Microsoft.
