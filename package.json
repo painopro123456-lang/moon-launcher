@@ -6,7 +6,8 @@
   "description": "A Windows Minecraft launcher for managing versions, instances, and modpacks.",
   "main": "src/main.cjs",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64"
   },
   "engines": {
     "node": ">=22.16.0"
@@ -19,6 +20,33 @@
     "adm-zip": "^0.5.16"
   },
   "devDependencies": {
-    "electron": "45.0.0"
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "dev.moon.launcher",
+    "productName": "Moon Launcher",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Moon-Launcher-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Moon Launcher"
+    }
   }
 }
