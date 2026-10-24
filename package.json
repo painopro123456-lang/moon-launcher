@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
+    "electron-updater": "^6.6.2",
     "minecraft-launcher-core": "3.18.2"
   },
   "devDependencies": {
     "electron": "45.0.0",
-    "electron-builder": "26.18.0",
-    "electron-updater": "^6.6.2"
+    "electron-builder": "26.18.0"
   },
   "build": {
     "appId": "dev.moon.launcher",
