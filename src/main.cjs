@@ -578,6 +578,9 @@ const activeLaunches = new Map();
 function getMinecraftRootPath() { return path.join(launcherPreferences.gameDirectory, "minecraft"); }
 function getMicrosoftClientIdPath() { return path.join(app.getPath("userData"), "microsoft-client.json"); }
 function getEncryptedAccountPath() { return path.join(app.getPath("userData"), "microsoft-account.bin"); }
+function getAccountVaultPath() { return path.join(app.getPath("userData"), "microsoft-accounts-vault.bin"); }
+function getServersPath() { return path.join(app.getPath("userData"), "servers.json"); }
+function getBackgroundPath() { return path.join(app.getPath("userData"), "custom-background"); }
 function sendWindowEvent(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
 }
@@ -607,21 +610,86 @@ async function saveMicrosoftClientId(value) {
   await fs.rename(target + ".tmp", target);
   return { configured: Boolean(clientId), clientId };
 }
-async function readSavedAccount() {
+async function readEncryptedAccountFile(filePath) {
   try {
     if (!safeStorage.isEncryptionAvailable()) throw new Error("Secure account storage is unavailable on this Windows account.");
-    return JSON.parse(safeStorage.decryptString(await fs.readFile(getEncryptedAccountPath())));
+    return JSON.parse(safeStorage.decryptString(await fs.readFile(filePath)));
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw new Error(error.message || "The saved Minecraft sign-in could not be read. Sign in again.");
   }
 }
-async function saveAccount(account) {
+async function writeEncryptedAccountFile(filePath, account) {
   if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows secure storage is unavailable, so Moon Launcher cannot safely save this account.");
-  const target = getEncryptedAccountPath();
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath + ".tmp", safeStorage.encryptString(JSON.stringify(account)));
+  await fs.rename(filePath + ".tmp", filePath);
+}
+async function readAccountVault() {
+  const saved = await readEncryptedAccountFile(getAccountVaultPath()).catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  if (saved && Array.isArray(saved.accounts)) return saved;
+  const legacy = await readEncryptedAccountFile(getEncryptedAccountPath());
+  return { accounts: legacy?.profile ? [legacy] : [], activeId: legacy?.profile?.id || "" };
+}
+async function writeAccountVault(vault) {
+  const target = getAccountVaultPath();
+  if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows secure storage is unavailable, so Moon Launcher cannot safely save these accounts.");
   await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target + ".tmp", safeStorage.encryptString(JSON.stringify(account)));
+  await fs.writeFile(target + ".tmp", safeStorage.encryptString(JSON.stringify(vault)));
   await fs.rename(target + ".tmp", target);
+}
+async function readSavedAccount() {
+  return readEncryptedAccountFile(getEncryptedAccountPath());
+}
+async function saveAccount(account) {
+  const vault = await readAccountVault();
+  const id = String(account?.profile?.id || "");
+  if (id) {
+    const index = vault.accounts.findIndex((item) => String(item?.profile?.id || "").toLowerCase() === id.toLowerCase());
+    if (index >= 0) vault.accounts[index] = account;
+    else vault.accounts.push(account);
+    vault.activeId = id;
+    await writeAccountVault(vault);
+  }
+  await writeEncryptedAccountFile(getEncryptedAccountPath(), account);
+}
+async function listSavedAccounts() {
+  const vault = await readAccountVault();
+  const active = await readSavedAccount();
+  return vault.accounts.filter((item) => item?.profile?.id && item?.profile?.name).map((item) => ({
+    uuid: String(item.profile.id),
+    username: String(item.profile.name),
+    active: String(active?.profile?.id || "").toLowerCase() === String(item.profile.id).toLowerCase()
+  }));
+}
+async function switchSavedAccount(uuid) {
+  const wanted = String(uuid || "");
+  const vault = await readAccountVault();
+  const account = vault.accounts.find((item) => String(item?.profile?.id || "").toLowerCase() === wanted.toLowerCase());
+  if (!account) throw new Error("That saved Minecraft account was not found. Sign in again to add it.");
+  vault.activeId = account.profile.id;
+  await writeAccountVault(vault);
+  await writeEncryptedAccountFile(getEncryptedAccountPath(), account);
+  return getAccountStatus();
+}
+async function removeSavedAccount(uuid) {
+  const wanted = String(uuid || "");
+  const vault = await readAccountVault();
+  const active = await readSavedAccount();
+  vault.accounts = vault.accounts.filter((item) => String(item?.profile?.id || "").toLowerCase() !== wanted.toLowerCase());
+  if (!vault.accounts.some((item) => String(item?.profile?.id || "").toLowerCase() === String(vault.activeId || "").toLowerCase())) {
+    vault.activeId = vault.accounts[0]?.profile?.id || "";
+  }
+  await writeAccountVault(vault);
+  if (String(active?.profile?.id || "").toLowerCase() === wanted.toLowerCase()) {
+    const replacement = vault.accounts.find((item) => String(item?.profile?.id || "").toLowerCase() === String(vault.activeId || "").toLowerCase());
+    if (replacement) await writeEncryptedAccountFile(getEncryptedAccountPath(), replacement);
+    else await fs.rm(getEncryptedAccountPath(), { force: true });
+  }
+  return { accounts: await listSavedAccounts(), status: await getAccountStatus() };
 }
 async function getAccountStatus() {
   const account = await readSavedAccount();
@@ -1147,6 +1215,127 @@ function openProject(slug) {
   return shell.openExternal("https://modrinth.com/modpack/" + encodeURIComponent(safeSlug));
 }
 
+async function findInstance(instanceId) {
+  const id = String(instanceId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Choose a valid Minecraft instance.");
+  const instance = (await readInstances()).find((item) => item.id === id);
+  if (!instance) throw new Error("That Minecraft instance could not be found.");
+  return instance;
+}
+async function listInstanceMods(instanceId) {
+  const instance = await findInstance(instanceId);
+  const directory = path.join(getInstancesPath(), instance.id, "mods");
+  await fs.mkdir(directory, { recursive: true });
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const mods = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !/\\.jar(?:\\.disabled)?$/i.test(entry.name)) continue;
+    const stat = await fs.stat(path.join(directory, entry.name));
+    mods.push({ name: entry.name, enabled: !entry.name.toLowerCase().endsWith(".jar.disabled"), size: stat.size });
+  }
+  return { instanceId: instance.id, instanceName: instance.name, directory, mods: mods.sort((a, b) => a.name.localeCompare(b.name)) };
+}
+async function toggleInstanceMod(instanceId, fileName) {
+  const instance = await findInstance(instanceId);
+  const name = String(fileName || "");
+  if (!name || name !== path.basename(name) || !/\\.jar(?:\\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
+  const directory = path.join(getInstancesPath(), instance.id, "mods");
+  const source = path.join(directory, name);
+  const stat = await fs.lstat(source).catch(() => null);
+  if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error("That mod file was not found.");
+  const destinationName = name.toLowerCase().endsWith(".jar.disabled") ? name.slice(0, -9) : name + ".disabled";
+  await fs.rename(source, path.join(directory, destinationName));
+  return listInstanceMods(instance.id);
+}
+async function deleteInstanceMod(instanceId, fileName) {
+  const instance = await findInstance(instanceId);
+  const name = String(fileName || "");
+  if (!name || name !== path.basename(name) || !/\\.jar(?:\\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
+  const target = path.join(getInstancesPath(), instance.id, "mods", name);
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error("That mod file was not found.");
+  await fs.rm(target);
+  return listInstanceMods(instance.id);
+}
+async function openInstanceModsFolder(instanceId) {
+  const instance = await findInstance(instanceId);
+  const directory = path.join(getInstancesPath(), instance.id, "mods");
+  await fs.mkdir(directory, { recursive: true });
+  const error = await shell.openPath(directory);
+  if (error) throw new Error(error);
+  return true;
+}
+async function readServers() {
+  try {
+    const data = JSON.parse(await fs.readFile(getServersPath(), "utf8"));
+    return Array.isArray(data.servers) ? data.servers : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw new Error("The saved server list could not be read.");
+  }
+}
+async function writeServers(servers) {
+  const target = getServersPath();
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target + ".tmp", JSON.stringify({ servers }, null, 2), "utf8");
+  await fs.rename(target + ".tmp", target);
+  return servers;
+}
+function validateServerAddress(value) {
+  const address = String(value || "").trim();
+  if (address.length > 255 || /[\\s/\\\\?#@]/.test(address)) throw new Error("Enter a server hostname or hostname:port, without a URL.");
+  const match = address.match(/^([a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?$/);
+  if (!match || match[1].startsWith(".") || match[1].endsWith(".") || match[1].includes("..")) throw new Error("Enter a valid server address, such as play.example.net:25565.");
+  if (match[2] && (Number(match[2]) < 1 || Number(match[2]) > 65535)) throw new Error("Server port must be between 1 and 65535.");
+  return address;
+}
+async function addServer(input = {}) {
+  const name = cleanName(input.name);
+  const address = validateServerAddress(input.address);
+  if (!name) throw new Error("Enter a name for this server.");
+  const servers = await readServers();
+  if (servers.some((item) => item.address.toLowerCase() === address.toLowerCase())) throw new Error("That server address is already saved.");
+  servers.unshift({ id: crypto.randomUUID(), name, address, createdAt: new Date().toISOString() });
+  return writeServers(servers);
+}
+async function removeServer(serverId) {
+  const servers = await readServers();
+  return writeServers(servers.filter((item) => item.id !== String(serverId || "")));
+}
+async function chooseCustomBackground() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose Moon Launcher background",
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]
+  });
+  if (result.canceled || !result.filePaths[0]) return { canceled: true };
+  const source = result.filePaths[0];
+  const stat = await fs.stat(source);
+  if (!stat.isFile() || stat.size > 12 * 1024 * 1024) throw new Error("Choose an image smaller than 12 MB.");
+  const extension = path.extname(source).toLowerCase();
+  const target = getBackgroundPath() + extension;
+  for (const ext of [".png", ".jpg", ".jpeg", ".webp"]) await fs.rm(getBackgroundPath() + ext, { force: true });
+  await fs.copyFile(source, target);
+  return { dataUrl: await readBackgroundDataUrl(target), extension };
+}
+async function readBackgroundDataUrl(filePath) {
+  const bytes = await fs.readFile(filePath);
+  const mime = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" }[path.extname(filePath).toLowerCase()];
+  return "data:" + mime + ";base64," + bytes.toString("base64");
+}
+async function getCustomBackground() {
+  for (const ext of [".png", ".jpg", ".jpeg", ".webp"]) {
+    const target = getBackgroundPath() + ext;
+    if (await pathExists(target)) return { dataUrl: await readBackgroundDataUrl(target), extension: ext };
+  }
+  return { dataUrl: "", extension: "" };
+}
+async function resetCustomBackground() {
+  for (const ext of [".png", ".jpg", ".jpeg", ".webp"]) await fs.rm(getBackgroundPath() + ext, { force: true });
+  return { dataUrl: "" };
+}
+
+
 ipcMain.handle("versions:list", fetchVersions);
 ipcMain.handle("instances:list", readInstances);
 ipcMain.handle("instances:create", (_event, input) => createInstance(input || {}));
@@ -1154,6 +1343,19 @@ ipcMain.handle("modpacks:import", importModpack);
 ipcMain.handle("modpacks:search", (_event, query) => searchModpacks(query));
 ipcMain.handle("modpacks:install", (_event, project) => installModrinthPack(project || {}));
 ipcMain.handle("modpacks:open", (_event, slug) => openProject(slug));
+ipcMain.handle("mods:list", (_event, instanceId) => listInstanceMods(instanceId));
+ipcMain.handle("mods:toggle", (_event, instanceId, fileName) => toggleInstanceMod(instanceId, fileName));
+ipcMain.handle("mods:delete", (_event, instanceId, fileName) => deleteInstanceMod(instanceId, fileName));
+ipcMain.handle("mods:open-folder", (_event, instanceId) => openInstanceModsFolder(instanceId));
+ipcMain.handle("servers:list", readServers);
+ipcMain.handle("servers:add", (_event, input) => addServer(input || {}));
+ipcMain.handle("servers:remove", (_event, serverId) => removeServer(serverId));
+ipcMain.handle("appearance:choose-background", chooseCustomBackground);
+ipcMain.handle("appearance:get-background", getCustomBackground);
+ipcMain.handle("appearance:reset-background", resetCustomBackground);
+ipcMain.handle("auth:profiles", listSavedAccounts);
+ipcMain.handle("auth:switch-profile", (_event, uuid) => switchSavedAccount(uuid));
+ipcMain.handle("auth:remove-profile", (_event, uuid) => removeSavedAccount(uuid));
 ipcMain.handle("auth:status", getAccountStatus);
 ipcMain.handle("auth:save-client-id", (_event, clientId) => saveMicrosoftClientId(clientId));
 ipcMain.handle("auth:sign-in", signInWithMicrosoft);
