@@ -799,6 +799,16 @@ async function readJsonResponse(response, context) {
     const detail = String(data.errorMessage || data.error_description || data.Message || data.message || data.error || "").replace(/[\r\n]+/g, " ").slice(0, 220);
     const path = typeof data.path === "string" ? data.path.replace(/[\r\n]+/g, " ").slice(0, 120) : "";
     const status = " (HTTP " + response.status + ").";
+    const normalizedDetail = detail.toLowerCase();
+    if (context === "Minecraft account sign-in failed" && response.status === 403) {
+      if (normalizedDetail.includes("invalid app registration") || normalizedDetail.includes("appreginfo")) {
+        throw new Error("Minecraft Services rejected Moon Launcher's Microsoft Client ID because it is not approved for Minecraft API access. Register this app's Client ID using Minecraft's official app review process: https://aka.ms/mce-reviewappid. Approval is required on Microsoft's side; changing launcher code cannot bypass it." + (path ? " [" + path + "]" : ""));
+      }
+      if (normalizedDetail.includes("account_suspended") || normalizedDetail.includes("account has been suspended")) {
+        throw new Error("Minecraft Services reports that this account is suspended. Wait and retry later, or contact Minecraft Support." + (path ? " [" + path + "]" : ""));
+      }
+      throw new Error("Minecraft Services returned HTTP 403 during game-token exchange. This can mean the app's Client ID needs Minecraft API approval, or that the account is restricted. " + (detail ? "Server response: " + detail : "The server returned no additional details.") + " If the response says 'Invalid app registration', submit the Client ID at https://aka.ms/mce-reviewappid." + (path ? " [" + path + "]" : ""));
+    }
     throw new Error(context + (detail ? ": " + detail : status) + (path ? " [" + path + "]" : ""));
   }
   return data;
