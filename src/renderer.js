@@ -563,7 +563,7 @@ $("#quick-play").addEventListener("click", () => {
   const instance = state.instances.find((item) => !(item.pack?.loader && item.pack.loader !== "Vanilla"));
   const card = instance && [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === instance.id);
   const launchButton = card?.querySelector(".launch-button");
-  if (launchButton && !launchButton.disabled) launchButton.click();
+  if (launchButton && !launchButton.disabled) { $("#quick-play").dataset.instanceId = instance.id; launchButton.click(); }
   else if (instance) showToast("That instance is already starting or running.");
 });
 $("#mods-instance-select").addEventListener("change", loadModsForSelectedInstance);
