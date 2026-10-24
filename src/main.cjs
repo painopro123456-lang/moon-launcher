@@ -809,7 +809,7 @@ async function signInWithMicrosoft() {
     });
     const address = callbackServer.address();
     if (!address || typeof address === "string") throw new Error("Could not start the secure local sign-in callback.");
-    const redirectUri = "http://localhost:" + address.port + "/";
+    const redirectUri = "http://localhost:" + address.port;
 
     const authorizeUrl = new URL(MICROSOFT_AUTHORIZE_URL);
     authorizeUrl.search = new URLSearchParams({
