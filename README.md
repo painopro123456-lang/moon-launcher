@@ -22,9 +22,9 @@ GitHub keeps preview builds for 14 days. The installer is unsigned, so Windows m
 - Choose memory, download connections, and whether Minecraft starts fullscreen.
 - Search Modrinth modpacks, download and checksum-verify their files, and import local `.mrpack` files.
 
-## One-time Microsoft setup
+## Microsoft sign-in
 
-For Microsoft sign-in, each user needs a public Application (client) ID from a Microsoft Entra app registration. Configure supported account types to include personal Microsoft accounts. Under **Authentication**, add the **Mobile and desktop applications** platform and the `http://localhost` redirect URI; enable public client flows if the portal offers that setting. Paste the Application (client) ID into Moon Launcher Settings. The app opens Microsoft sign-in in your default browser and returns to the launcher automatically. It never asks you to enter your Microsoft password inside the launcher or uses a client secret.
+Moon Launcher includes its public Microsoft Application (client) ID, so users do not need to register an app or enter an ID in Settings. Each player signs in with their own personal Microsoft account in the default browser. The app uses a desktop public-client authorization flow and does not contain a client secret. Sign-in can only complete for an account that owns Minecraft: Java Edition.
 
 Sign-in can only complete for an account that owns Minecraft: Java Edition. Moon Launcher stores its refresh token encrypted with Windows secure storage.
 
