@@ -1377,7 +1377,7 @@ ipcMain.handle("auth:open-verification", async (_event, value) => {
   await shell.openExternal(url.href);
   return true;
 });
-ipcMain.handle("auth:open-registration", async () => { await shell.openExternal("https://entra.microsoft.com/"); return true; });
+ipcMain.handle("auth:open-registration", async () => { await shell.openExternal("https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"); return true; });
 ipcMain.handle("launcher:launch-instance", (_event, instanceId) => launchInstance(instanceId));
 ipcMain.handle("settings:get", () => ({ ...launcherPreferences }));
 ipcMain.handle("settings:save", (_event, settings = {}) => writeLauncherPreferences({
