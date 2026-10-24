@@ -342,6 +342,18 @@ async function loadVersions() {
     }
 
     select.replaceChildren();
+    const pinnedVersions = ["26.3", "26.2", "1.21.11", "1.8.9"];
+    const pinned = document.createElement("optgroup");
+    pinned.label = "Quick versions";
+    for (const id of pinnedVersions) {
+      if (!state.versions.some((version) => version.id === id)) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = id + " · Quick version";
+        pinned.append(option);
+      }
+    }
+    if (pinned.children.length) select.append(pinned);
     if (releases.children.length) select.append(releases);
     if (snapshots.children.length) select.append(snapshots);
     select.disabled = false;
@@ -427,6 +439,20 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
+document.querySelectorAll(".quick-version").forEach((button) => {
+  button.addEventListener("click", () => {
+    const version = button.dataset.version;
+    const select = $("#version-select");
+    const nameInput = $('#instance-form input[name="name"]');
+    if (![...select.options].some((option) => option.value === version)) {
+      const option = new Option(version + " · Quick version", version);
+      select.add(option, 0);
+    }
+    select.value = version;
+    nameInput.value = "Minecraft " + version;
+    $("#instance-dialog").showModal();
+  });
+});
 $("#close-instance-dialog").addEventListener("click", () => $("#instance-dialog").close());
 $("#instance-form").addEventListener("submit", createInstance);
 $("#import-pack").addEventListener("click", importPack);
