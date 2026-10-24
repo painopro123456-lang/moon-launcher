@@ -241,13 +241,8 @@
 
   <dialog id="auth-dialog" class="dialog auth-dialog">
     <div class="dialog-header"><div><div class="eyebrow">MICROSOFT SIGN-IN</div><h2>Sign in to Minecraft</h2></div><button type="button" class="close-button" id="close-auth-dialog" aria-label="Close">×</button></div>
-    <p class="auth-instructions" id="auth-status-message">Microsoft sign-in needs a registered app ID. If app registration is blocked for your account, use offline mode for single-player.</p>
+    <p class="auth-instructions" id="auth-status-message">A secure Microsoft sign-in window will open in your browser. Sign in there, then return to Moon Launcher.</p>
     <div id="auth-code-panel" class="auth-code-panel" hidden><span class="field-label">Your one-time code</span><strong id="auth-user-code">———</strong><div class="auth-actions"><button class="secondary-button" id="copy-auth-code">Copy code</button><button class="primary-button" id="open-auth-browser">Open Microsoft sign-in</button></div></div>
-    <div class="offline-signin">
-      <label class="field-label" for="offline-username">Offline player name</label>
-      <div class="auth-actions"><input id="offline-username" type="text" maxlength="16" minlength="3" pattern="[A-Za-z0-9_]{3,16}" placeholder="Example: MoonPlayer" autocomplete="off" /><button class="secondary-button" id="offline-sign-in">Play offline</button></div>
-      <p class="dialog-note">Offline mode is for single-player and offline-mode servers only. It does not sign in to Microsoft or verify game ownership.</p>
-    </div>
     <button class="text-button auth-cancel" id="cancel-auth">Cancel sign-in</button>
   </dialog>
 
