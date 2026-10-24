@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "" };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -18,6 +18,7 @@ function setCatalogState(online, message) {
 
 function setView(view) {
   state.view = view;
+  if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
@@ -265,8 +266,11 @@ function renderSearchResults(projects) {
   if (projects.length === 0) {
     const message = document.createElement("div");
     message.className = "search-message";
-    message.textContent = "No modpacks found. Try another search.";
+    message.textContent = state.modpackQuery
+      ? "No modpacks found for this search. Try another phrase."
+      : "No modpacks were returned. Check your connection and try again.";
     host.append(message);
+    renderModpackPagination();
     return;
   }
 
@@ -312,6 +316,41 @@ function renderSearchResults(projects) {
     card.append(content);
     host.append(card);
   }
+  renderModpackPagination();
+}
+
+function renderModpackPagination() {
+  const host = $("#modpack-pagination");
+  if (!host) return;
+  host.replaceChildren();
+  const pageSize = 20;
+  const totalPages = Math.max(1, Math.ceil(state.modpackTotal / pageSize));
+  const summary = document.createElement("span");
+  summary.className = "pagination-summary";
+  const first = state.modpackTotal === 0 ? 0 : ((state.modpackPage - 1) * pageSize) + 1;
+  const last = Math.min(state.modpackPage * pageSize, state.modpackTotal);
+  summary.textContent = state.modpackTotal
+    ? `Showing ${first}–${last} of ${state.modpackTotal.toLocaleString()} modpacks`
+    : "No results";
+  const controls = document.createElement("div");
+  controls.className = "pagination-controls";
+  const previous = document.createElement("button");
+  previous.type = "button";
+  previous.className = "secondary-button pagination-button";
+  previous.textContent = "← Previous";
+  previous.disabled = state.modpackPage <= 1;
+  previous.addEventListener("click", () => searchModpacks(state.modpackPage - 1));
+  const pageLabel = document.createElement("span");
+  pageLabel.className = "pagination-page";
+  pageLabel.textContent = `Page ${state.modpackPage} of ${totalPages.toLocaleString()}`;
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "secondary-button pagination-button";
+  next.textContent = "Next →";
+  next.disabled = state.modpackPage >= totalPages;
+  next.addEventListener("click", () => searchModpacks(state.modpackPage + 1));
+  controls.append(previous, pageLabel, next);
+  host.append(summary, controls);
 }
 
 async function installModrinthPack(project, button) {
@@ -535,23 +574,36 @@ async function resetCustomBackground() {
   catch (error) { showToast(error.message || "Could not reset background."); }
 }
 
-async function searchModpacks() {
+async function searchModpacks(page = 1) {
   const query = $("#modpack-query").value.trim();
   const host = $("#modpack-results");
+  const requestId = ++state.modpackRequestId;
+  state.modpackQuery = query;
+  state.modpackPage = Math.max(1, Number(page) || 1);
   host.replaceChildren();
+  $("#modpack-pagination").replaceChildren();
   const loading = document.createElement("div");
   loading.className = "search-message";
-  loading.textContent = "Searching Modrinth…";
+  loading.textContent = state.modpackPage === 1 && !query
+    ? "Loading popular Modrinth modpacks…"
+    : `Loading modpack page ${state.modpackPage}…`;
   host.append(loading);
   try {
-    const projects = await api.searchModpacks(query);
-    renderSearchResults(projects);
+    const result = await api.searchModpacks({ query, page: state.modpackPage });
+    if (requestId !== state.modpackRequestId) return;
+    state.modpackTotal = result.total;
+    state.modpackPage = result.page;
+    state.modpacksLoaded = true;
+    renderSearchResults(result.projects || []);
   } catch (error) {
+    if (requestId !== state.modpackRequestId) return;
     host.replaceChildren();
     const message = document.createElement("div");
     message.className = "search-message";
     message.textContent = error.message || "Modrinth search is unavailable.";
     host.append(message);
+    $("#modpack-pagination").replaceChildren();
+    state.modpacksLoaded = false;
   }
 }
 
@@ -609,9 +661,9 @@ $("#close-instance-dialog").addEventListener("click", () => $("#instance-dialog"
 $("#instance-form").addEventListener("submit", createInstance);
 $("#import-pack").addEventListener("click", importPack);
 $("#import-pack-secondary").addEventListener("click", importPack);
-$("#search-modpacks").addEventListener("click", searchModpacks);
+$("#search-modpacks").addEventListener("click", () => searchModpacks(1));
 $("#modpack-query").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") searchModpacks();
+  if (event.key === "Enter") searchModpacks(1);
 });
 $("#open-folder").addEventListener("click", () => api.openInstanceFolder());
 $(".account-card").addEventListener("click", () => { if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); });
