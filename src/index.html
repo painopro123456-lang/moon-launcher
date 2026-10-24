@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Moon Launcher</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./renderer.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">☾</div>
+        <div><strong>MOON</strong><span>LAUNCHER</span></div>
+      </div>
+      <div class="sidebar-label">LIBRARY</div>
+      <nav class="navigation" aria-label="Main navigation">
+        <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span>Home</button>
+        <button class="nav-item" data-view="modpacks"><span class="nav-icon">▦</span>Modpacks</button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="account-card">
+          <div class="avatar">?</div>
+          <div><strong>Not signed in</strong><span>Minecraft account</span></div>
+        </div>
+        <div class="prototype-note"><span class="pulse"></span>Early preview</div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow" id="page-kicker">YOUR GAME LIBRARY</div>
+          <h1 id="page-title">Welcome to Moon</h1>
+        </div>
+        <div class="topbar-right">
+          <div class="catalog-state"><span class="status-dot"></span><span id="catalog-label">Checking Minecraft catalog</span></div>
+          <button class="icon-button" id="open-folder" title="Open instance folder" aria-label="Open instance folder">↗</button>
+        </div>
+      </header>
+
+      <section class="view active" id="home-view">
+        <div class="hero-card">
+          <div class="hero-copy">
+            <div class="pill"><span class="sparkle">✦</span> YOUR WORLDS, YOUR WAY</div>
+            <h2>Every version.<br><span>One home.</span></h2>
+            <p>Keep Minecraft versions and modpack instances organized in one place.</p>
+            <button class="primary-button" id="new-instance">＋ Create instance</button>
+          </div>
+          <div class="moon-art" aria-hidden="true"><div class="moon-orb"></div><span class="star star-one">✦</span><span class="star star-two">·</span><span class="star star-three">✧</span></div>
+          <div class="hero-glow"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><span class="stat-icon purple">◈</span><div><span class="stat-label">INSTANCES</span><strong id="instance-count">0</strong></div></div>
+          <div class="stat-card"><span class="stat-icon blue">◉</span><div><span class="stat-label">LATEST RELEASE</span><strong id="latest-release">—</strong></div></div>
+          <div class="stat-card"><span class="stat-icon lilac">✧</span><div><span class="stat-label">LATEST SNAPSHOT</span><strong id="latest-snapshot">—</strong></div></div>
+        </div>
+
+        <div class="section-heading">
+          <div><div class="eyebrow">READY WHEN YOU ARE</div><h2>Your instances</h2></div>
+          <button class="secondary-button" id="import-pack">Import modpack</button>
+        </div>
+        <div class="instance-grid" id="instance-list"></div>
+
+        <div class="notice-card">
+          <div class="notice-icon">✦</div>
+          <div><strong>Launcher engine is being connected</strong><p>This preview can browse Minecraft versions and organize instances. Microsoft sign-in, game downloads, and launching are not connected yet.</p></div>
+        </div>
+      </section>
+
+      <section class="view" id="modpacks-view">
+        <div class="page-intro">
+          <div class="eyebrow">DISCOVER SOMETHING NEW</div>
+          <h2>Modpacks</h2>
+          <p>Search Modrinth, or import a pack file from your computer.</p>
+        </div>
+        <div class="search-row">
+          <label class="search-box"><span>⌕</span><input id="modpack-query" type="search" placeholder="Search modpacks..." maxlength="100"></label>
+          <button class="primary-button" id="search-modpacks">Search</button>
+          <button class="secondary-button" id="import-pack-secondary">Import file</button>
+        </div>
+        <div class="results-grid" id="modpack-results"></div>
+      </section>
+
+      <section class="view" id="settings-view">
+        <div class="page-intro">
+          <div class="eyebrow">MAKE IT YOURS</div>
+          <h2>Settings</h2>
+          <p>Moon Launcher is being built in stages.</p>
+        </div>
+        <div class="settings-list">
+          <div class="setting-row"><div><strong>Microsoft account</strong><span>Secure account sign-in is not connected yet.</span></div><span class="coming-pill">Coming next</span></div>
+          <div class="setting-row"><div><strong>Game installation</strong><span>Version downloads and mod loader installation are not connected yet.</span></div><span class="coming-pill">Coming next</span></div>
+          <div class="setting-row"><div><strong>Modpack imports</strong><span>Manifest details can be read. Pack files are not downloaded yet.</span></div><span class="coming-pill">In progress</span></div>
+          <div class="setting-row"><div><strong>Instance data</strong><span>Open Moon Launcher’s local instance folder.</span></div><button class="text-button" id="open-folder-settings">Open folder ↗</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="instance-dialog" class="dialog">
+    <form id="instance-form" method="dialog">
+      <div class="dialog-header"><div><div class="eyebrow">START A FRESH PROFILE</div><h2>New instance</h2></div><button class="close-button" value="cancel" aria-label="Close">×</button></div>
+      <label class="field-label">Instance name<input name="name" placeholder="My survival world" maxlength="80" required></label>
+      <label class="field-label">Minecraft version<select name="version" id="version-select" required><option value="">Loading versions…</option></select></label>
+      <p class="dialog-note">This creates an instance entry. Downloading and launching the game are still in progress.</p>
+      <button class="primary-button dialog-submit" value="create">Create instance</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
