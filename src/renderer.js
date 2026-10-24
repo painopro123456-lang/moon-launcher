@@ -215,7 +215,7 @@ async function changeLauncherDirectory() {
 }
 
 function openAuthDialog() {
-  $("#auth-status-message").textContent = "Starting secure Microsoft device sign-in…";
+  $("#auth-status-message").textContent = "Preparing secure Microsoft sign-in…";
   $("#auth-code-panel").hidden = true;
   if (!$("#auth-dialog").open) $("#auth-dialog").showModal();
 }
