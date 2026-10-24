@@ -13,10 +13,10 @@
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 820px; min-height: 100vh; background: var(--bg); color: var(--text); }
+body { margin: 0; min-width: 820px; min-height: 100vh; border-radius: 14px; background: var(--bg); color: var(--text); }
 button, input, select { font: inherit; }
 button { color: inherit; cursor: pointer; }
-.app-shell { min-height: 100vh; display: flex; }
+.app-shell { min-height: 100vh; display: flex; border: 1px solid rgba(255, 255, 255, .10); border-radius: 14px; overflow: hidden; }
 .sidebar { width: 228px; flex: 0 0 228px; display: flex; flex-direction: column; padding: 28px 16px 18px; background: #111017; border-right: 1px solid var(--border); }
 .brand { display: flex; gap: 12px; align-items: center; padding: 0 12px; margin-bottom: 54px; }
 .brand-mark { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 13px; color: #171221; font-size: 24px; background: linear-gradient(135deg,#dbcaff,#9870ff); box-shadow: 0 8px 25px #8b63ff45; }

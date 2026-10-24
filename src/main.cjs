@@ -195,6 +195,7 @@ ipcMain.handle("window:close", () => {
 function createWindow() {
   mainWindow = new BrowserWindow({
     frame: false,
+    roundedCorners: true,
     width: 1180,
     height: 780,
     minWidth: 860,
