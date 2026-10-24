@@ -17,12 +17,13 @@ GitHub keeps each build artifact for 14 days. This preview installer is unsigned
 
 - Browse the Minecraft version catalog.
 - Save named local instance entries.
-- Search Modrinth modpacks.
-- Read metadata from Modrinth `.mrpack` and CurseForge `.zip` manifests.
+- Search Modrinth modpacks and install the latest pack version into its own instance folder.
+- Download and SHA-1/SHA-512 verify pack files, then apply client overrides from the .mrpack.
+- Import local Modrinth .mrpack files; read metadata from CurseForge .zip manifests.
 
 ## What is not ready yet
 
-This download is an early preview, not a complete playable Minecraft launcher. It does **not** download or install Minecraft or modpack files, sign into Microsoft, or launch the game. The launch action remains disabled. The Minecraft engine still needs to be connected.
+This download is an early preview, not a complete playable Minecraft launcher. It installs Modrinth pack files into isolated instance folders, but it does **not** install the Minecraft game or mod loader, sign into Microsoft, or launch the game. CurseForge pack imports currently add manifest details only; installing their files needs an approved CurseForge integration. The launch action remains disabled while the Minecraft engine is being connected.
 
 ## Run from source
 

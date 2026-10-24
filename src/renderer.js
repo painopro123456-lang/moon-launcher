@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -56,13 +56,15 @@ function renderInstances() {
     icon.textContent = instance.source === "vanilla" ? "◈" : "▦";
     const badge = document.createElement("span");
     badge.className = "instance-badge";
-    badge.textContent = instance.installState === "installed" ? "Ready" : "Setup needed";
+    badge.textContent = instance.installState === "files-ready" ? "Files ready" : instance.installState === "installed" ? "Ready" : "Setup needed";
     top.append(icon, badge);
 
     const title = document.createElement("h3");
     title.textContent = instance.name;
     const detail = document.createElement("p");
-    const packInfo = instance.pack ? " · " + instance.pack.source : "";
+    const packInfo = instance.pack
+      ? " · " + instance.pack.source + (instance.pack.loader && instance.pack.loader !== "Vanilla" ? " · " + instance.pack.loader : "")
+      : "";
     detail.textContent = "Minecraft " + instance.minecraftVersion + packInfo;
     const launch = document.createElement("button");
     launch.className = "launch-button";
@@ -108,17 +110,57 @@ function renderSearchResults(projects) {
     title.textContent = project.title;
     const description = document.createElement("p");
     description.textContent = project.description || "No description provided.";
+
+    const actions = document.createElement("div");
+    actions.className = "modpack-actions";
+    const install = document.createElement("button");
+    install.className = "primary-button install-pack-button";
+    install.textContent = "Install pack";
+    install.addEventListener("click", () => installModrinthPack(project, install));
+
     const link = document.createElement("button");
+    link.className = "project-link";
     link.textContent = "View on Modrinth ↗";
     link.addEventListener("click", async () => {
       try { await api.openModrinthProject(project.slug); }
       catch (error) { showToast(error.message); }
     });
-    content.append(title, description, link);
+
+    actions.append(install, link);
+    content.append(title, description, actions);
     card.append(content);
     host.append(card);
   }
 }
+
+async function installModrinthPack(project, button) {
+  if (state.activeInstall) {
+    showToast("A modpack is already installing. Please wait for it to finish.");
+    return;
+  }
+
+  state.activeInstall = { projectId: project.id, button };
+  button.disabled = true;
+  button.textContent = "Starting…";
+  try {
+    const instance = await api.installModrinthPack(project);
+    state.instances.unshift(instance);
+    renderInstances();
+    button.textContent = "Installed";
+    showToast(instance.name + " files are ready. Minecraft and loader setup are still in progress.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Try again";
+    showToast(error.message || "Could not install this Modrinth pack.");
+  } finally {
+    state.activeInstall = null;
+  }
+}
+
+api.onModpackProgress((progress) => {
+  if (!state.activeInstall || progress.projectId !== state.activeInstall.projectId) return;
+  state.activeInstall.button.textContent = progress.message || "Installing…";
+});
 
 async function loadVersions() {
   const select = $("#version-select");
@@ -186,13 +228,23 @@ async function createInstance(event) {
 }
 
 async function importPack() {
+  if (state.activeInstall) {
+    showToast("Wait for the current modpack install to finish first.");
+    return;
+  }
   try {
     const instance = await api.importModpack();
     if (!instance) return;
     state.instances.unshift(instance);
     renderInstances();
-    const count = instance.pack?.files ?? 0;
-    showToast("Imported " + instance.name + " (" + count + " file entries). Pack downloads are not connected yet.");
+    if (instance.installState === "files-ready") {
+      showToast(instance.name + " files are ready. Minecraft and loader setup are still in progress.");
+    } else if (instance.source === "curseforge") {
+      showToast("Added the CurseForge pack details. Its files need an approved CurseForge integration.");
+    } else {
+      const count = instance.pack?.files ?? 0;
+      showToast("Imported " + instance.name + " (" + count + " file entries).");
+    }
   } catch (error) {
     showToast(error.message || "Could not import that modpack.");
   }
