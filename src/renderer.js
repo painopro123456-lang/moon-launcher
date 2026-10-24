@@ -209,6 +209,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
+$("#close-instance-dialog").addEventListener("click", () => $("#instance-dialog").close());
 $("#instance-form").addEventListener("submit", createInstance);
 $("#import-pack").addEventListener("click", importPack);
 $("#import-pack-secondary").addEventListener("click", importPack);
