@@ -9,6 +9,8 @@ const path = require("node:path");
 
 const MANIFEST_URL = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
 const MODRINTH_API = "https://api.modrinth.com/v2";
+const MOON_MENU_RELEASE_API = "https://api.github.com/repos/painopro123456-lang/glassmenu/releases/latest";
+const MAX_MOON_MENU_JAR_BYTES = 100 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_PACK_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const MAX_PACK_FILE_BYTES = 256 * 1024 * 1024;
@@ -411,10 +413,61 @@ async function applyMrpackOverrides(zip, prefix, instanceDirectory, totals, proj
   return copied;
 }
 
+async function downloadMoonMenuJar() {
+  const response = await fetch(MOON_MENU_RELEASE_API, {
+    headers: { Accept: "application/vnd.github+json", "User-Agent": MODRINTH_USER_AGENT },
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) throw new Error("Moon Menu's latest GitHub release could not be found (HTTP " + response.status + ").");
+  const release = await response.json();
+  const asset = (release.assets || []).find((item) => /^glassmenu-[0-9][A-Za-z0-9.+_-]*\.jar$/i.test(item.name || ""));
+  if (!asset || !asset.browser_download_url) {
+    throw new Error("Moon Menu does not have a published JAR release yet. Publish a release from the glassmenu repository and try again.");
+  }
+  if (Number(asset.size) > MAX_MOON_MENU_JAR_BYTES) throw new Error("The Moon Menu JAR is larger than Moon Launcher allows.");
+  const url = new URL(asset.browser_download_url);
+  if (url.protocol !== "https:" || !["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"].includes(url.hostname)) {
+    throw new Error("Moon Menu's release uses an unsupported download host.");
+  }
+  const jarResponse = await fetch(url, { headers: { "User-Agent": MODRINTH_USER_AGENT }, signal: AbortSignal.timeout(60000) });
+  if (!jarResponse.ok) throw new Error("Moon Menu download failed (HTTP " + jarResponse.status + ").");
+  const bytes = Buffer.from(await jarResponse.arrayBuffer());
+  if (!bytes.length || bytes.length > MAX_MOON_MENU_JAR_BYTES || (asset.size && bytes.length !== Number(asset.size))) {
+    throw new Error("The downloaded Moon Menu JAR did not match the published file size.");
+  }
+  if (asset.digest && /^sha256:[a-f0-9]{64}$/i.test(asset.digest)) {
+    const digest = crypto.createHash("sha256").update(bytes).digest("hex");
+    if (digest.toLowerCase() !== asset.digest.slice(7).toLowerCase()) throw new Error("Moon Menu's downloaded JAR failed its SHA-256 integrity check.");
+  }
+  if (bytes.subarray(0, 2).toString("hex") !== "504b") throw new Error("The published Moon Menu file is not a valid JAR archive.");
+  return { bytes, version: String(release.tag_name || release.name || "latest"), fileName: asset.name };
+}
+
 async function installMrpackArchive(archiveBytes, metadata = {}) {
   const { zip, manifest, pack } = parseMrpackArchive(archiveBytes);
   const projectId = String(metadata.projectId || "");
   const progressId = projectId || "local-import";
+  let includeMoonMenu = false;
+  let moonMenuRelease = null;
+  const compatibleMoonMenuPack = pack.version === "26.2"
+    && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader");
+  if (compatibleMoonMenuPack) {
+    const choice = await dialog.showMessageBox(mainWindow, {
+      type: "question",
+      buttons: ["Include Moon Menu", "No thanks"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Include Moon Menu?",
+      message: "Add Moon Menu to this modpack?",
+      detail: "Moon Menu is available for Minecraft 26.2 with Fabric. It will be installed into this instance's mods folder."
+    });
+    includeMoonMenu = choice.response === 0;
+    if (includeMoonMenu) {
+      reportModpackProgress(progressId, "Downloading Moon Menu…", 0, 0);
+      moonMenuRelease = await downloadMoonMenuJar();
+    }
+  }
+
   const instanceId = crypto.randomUUID();
   const instanceName = cleanName(pack.name || metadata.projectName) || "Modrinth modpack";
   const instancesDirectory = getInstancesPath();
@@ -486,6 +539,17 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
     const overrideTotals = { bytes: 0 };
     overrideFiles += await applyMrpackOverrides(zip, "overrides/", stagingDirectory, overrideTotals, progressId);
     overrideFiles += await applyMrpackOverrides(zip, "client-overrides/", stagingDirectory, overrideTotals, progressId);
+    if (moonMenuRelease) {
+      const modsDirectory = path.join(stagingDirectory, "mods");
+      await fs.mkdir(modsDirectory, { recursive: true });
+      const safeJarName = path.basename(moonMenuRelease.fileName);
+      const jarPath = path.join(modsDirectory, safeJarName);
+      if (uniquePaths.has(("mods/" + safeJarName).toLowerCase())) {
+        throw new Error("This modpack already contains a file with the Moon Menu JAR name.");
+      }
+      await fs.writeFile(jarPath, moonMenuRelease.bytes, { flag: "wx" });
+      installedFiles++;
+    }
 
     const instance = {
       id: instanceId,
