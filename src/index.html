@@ -19,6 +19,8 @@
       <nav class="navigation" aria-label="Main navigation">
         <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span>Home</button>
         <button class="nav-item" data-view="modpacks"><span class="nav-icon">▦</span>Modpacks</button>
+        <button class="nav-item" data-view="mods"><span class="nav-icon">⌘</span>Mods</button>
+        <button class="nav-item" data-view="servers"><span class="nav-icon">◎</span>Servers</button>
         <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
       </nav>
       <div class="sidebar-bottom">
@@ -53,7 +55,7 @@
             <div class="pill"><span class="sparkle">✦</span> YOUR WORLDS, YOUR WAY</div>
             <h2>Every version.<br><span>One home.</span></h2>
             <p>Keep Minecraft versions and modpack instances organized in one place.</p>
-            <button class="primary-button" id="new-instance">＋ Create instance</button>
+            <div class="hero-actions"><button class="primary-button" id="new-instance">＋ Create instance</button><button class="secondary-button" id="quick-play" disabled>▶ Quick Play</button></div>
           </div>
           <div class="moon-art" aria-hidden="true"><div class="moon-orb"></div><span class="star star-one">✦</span><span class="star star-two">·</span><span class="star star-three">✧</span></div>
           <div class="hero-glow"></div>
@@ -101,6 +103,36 @@
         <div class="results-grid" id="modpack-results"></div>
       </section>
 
+      <section class="view" id="mods-view">
+        <div class="page-intro">
+          <div class="eyebrow">TUNE YOUR GAME</div>
+          <h2>Mod manager</h2>
+          <p>View mods in an instance, temporarily disable them, or remove them from that instance.</p>
+        </div>
+        <div class="manager-toolbar">
+          <label class="field-label">Instance
+            <span class="select-wrap"><select id="mods-instance-select" aria-label="Choose instance for mod manager"></select><span class="select-caret"></span></span>
+          </label>
+          <button class="secondary-button" id="refresh-mods">Refresh mods</button>
+          <button class="secondary-button" id="open-mods-folder">Open mods folder</button>
+        </div>
+        <div class="mod-list" id="mods-list"><div class="empty-card">Choose an instance to view its mods.</div></div>
+      </section>
+
+      <section class="view" id="servers-view">
+        <div class="page-intro">
+          <div class="eyebrow">YOUR MULTIPLAYER SHORTCUTS</div>
+          <h2>Server list</h2>
+          <p>Save favourite Java servers. Copy an address and join it from Minecraft multiplayer.</p>
+        </div>
+        <form class="server-form" id="server-form">
+          <label class="field-label">Server name<input name="name" maxlength="60" placeholder="My PvP server" required></label>
+          <label class="field-label">Server address<input name="address" maxlength="255" placeholder="play.example.net or play.example.net:25565" required></label>
+          <button class="primary-button" type="submit">＋ Add server</button>
+        </form>
+        <div class="server-list" id="server-list"></div>
+      </section>
+
       <section class="view" id="settings-view">
         <div class="page-intro">
           <div class="eyebrow">MAKE IT YOURS</div>
@@ -113,6 +145,26 @@
             <div class="setting-row account-setting">
               <div><strong id="settings-account-name">Not signed in</strong><span id="settings-account-detail">Sign in with the Microsoft account that owns Minecraft: Java Edition.</span></div>
               <div class="setting-actions"><button class="secondary-button" id="sign-in-button">Sign in</button><button class="text-button" id="sign-out-button" hidden>Sign out</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">ACCOUNT PROFILES</div><h3>Saved Minecraft accounts</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row setting-row-stacked">
+              <div><strong>Switch account</strong><span>Accounts you've signed into on this PC can be selected without signing in again, while their tokens remain encrypted locally.</span></div>
+              <div class="account-profiles-row"><select id="account-profile-select" aria-label="Saved Minecraft accounts"></select><div class="setting-actions"><button class="secondary-button" id="switch-account-button">Switch account</button><button class="text-button" id="remove-account-button">Remove saved account</button></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-heading"><div><div class="eyebrow">APPEARANCE</div><h3>Custom background</h3></div></div>
+          <div class="settings-list">
+            <div class="setting-row">
+              <div><strong>Launcher artwork</strong><span>Choose a PNG, JPG, or WebP image for the home banner.</span></div>
+              <div class="setting-actions"><button class="secondary-button" id="choose-background">Choose image</button><button class="text-button" id="reset-background">Reset</button></div>
             </div>
           </div>
         </div>
