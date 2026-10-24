@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require("electron");
+const http = require("node:http");
 const os = require("node:os");
 const AdmZip = require("adm-zip");
 const crypto = require("node:crypto");
@@ -560,7 +561,7 @@ async function installModrinthPack(project) {
 
 
 
-const MICROSOFT_DEVICE_CODE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
+const MICROSOFT_AUTHORIZE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
 const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
 const XBOX_USER_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate";
 const XBOX_XSTS_URL = "https://xsts.auth.xboxlive.com/xsts/authorize";
@@ -723,54 +724,123 @@ async function exchangeMicrosoftForMinecraft(msAccessToken, requireOwnership) {
     xuid: String(xstsUser.xid || xboxUser.xid || "")
   };
 }
+async function waitForMicrosoftAuthorization(server, expectedState, redirectUri) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(cancelPoll);
+      clearTimeout(timeout);
+      server.close();
+      if (error) reject(error);
+      else resolve(value);
+    };
+
+    const timeout = setTimeout(() => finish(new Error("Microsoft sign-in timed out. Please try again.")), 5 * 60 * 1000);
+    const cancelPoll = setInterval(() => {
+      if (authCancelRequested) finish(new Error("Microsoft sign-in was canceled."));
+    }, 250);
+
+    server.on("request", (request, response) => {
+      let callbackUrl;
+      try { callbackUrl = new URL(request.url || "/", redirectUri); }
+      catch {
+        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Invalid sign-in response. You can close this tab.");
+        return;
+      }
+
+      if (callbackUrl.pathname !== "/callback") {
+        response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Not found.");
+        return;
+      }
+
+      const returnedState = callbackUrl.searchParams.get("state");
+      const authorizationError = callbackUrl.searchParams.get("error");
+      if (authorizationError) {
+        const detail = callbackUrl.searchParams.get("error_description") || authorizationError;
+        response.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+        response.end("<!doctype html><html><head><meta charset=\"utf-8\"><title>Moon Launcher</title></head><body style=\"font:16px sans-serif;padding:40px\"><h2>Microsoft sign-in was not completed</h2><p>You can close this tab and return to Moon Launcher.</p></body></html>");
+        finish(new Error("Microsoft sign-in was not completed: " + String(detail).replace(/[\\r\\n]+/g, " ").slice(0, 180)));
+        return;
+      }
+      if (!returnedState || returnedState !== expectedState) {
+        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("The sign-in response could not be verified. Return to Moon Launcher and try again.");
+        finish(new Error("Microsoft sign-in could not be verified. Please try again."));
+        return;
+      }
+
+      const code = callbackUrl.searchParams.get("code");
+      if (!code) {
+        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Microsoft did not return an authorization code. Return to Moon Launcher and try again.");
+        finish(new Error("Microsoft did not return an authorization code."));
+        return;
+      }
+
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end("<!doctype html><html><head><meta charset=\"utf-8\"><title>Moon Launcher</title></head><body style=\"font:16px sans-serif;padding:40px;background:#f7f7fb;color:#222\"><h2>You're signed in</h2><p>Microsoft sign-in is complete. You can close this tab and return to Moon Launcher.</p></body></html>");
+      finish(null, code);
+    });
+  });
+}
+
 async function signInWithMicrosoft() {
   if (authInProgress) throw new Error("A Microsoft sign-in is already running.");
   const clientId = await readMicrosoftClientId();
   if (!clientId) throw new Error("Add your Microsoft Application (client) ID in Settings first.");
   authInProgress = true;
   authCancelRequested = false;
+  let callbackServer;
   try {
-    reportAuthProgress("starting", "Preparing Microsoft sign-in…");
-    const device = await postFormJson(MICROSOFT_DEVICE_CODE_URL, {
-      client_id: clientId, scope: "XboxLive.signin offline_access"
-    }, "Could not start Microsoft sign-in");
-    const verificationUri = String(device.verification_uri || "https://microsoft.com/devicelogin");
-    const verification = new URL(verificationUri);
-    if (verification.protocol !== "https:" || !["microsoft.com", "www.microsoft.com", "login.microsoftonline.com"].includes(verification.hostname.toLowerCase())) {
-      throw new Error("Microsoft returned an unexpected sign-in link.");
-    }
-    // Open Microsoft sign-in in the user's default browser as soon as the device code is ready.
-    // Keep the device-code flow working even if the browser cannot be launched automatically.
-    await shell.openExternal(verification.href).catch((error) => {
-      console.error("Could not open Microsoft sign-in in the browser:", error);
-    });
-    reportAuthProgress("device-code", "Microsoft sign-in opened in your browser. Enter the code shown here.", {
-      userCode: String(device.user_code || ""), verificationUri
-    });
+    reportAuthProgress("starting", "Opening Microsoft sign-in in your browser…");
 
-    const expiresAt = Date.now() + Math.max(60, Number(device.expires_in || 900)) * 1000;
-    let interval = Math.max(5, Number(device.interval || 5)) * 1000;
-    let microsoftToken;
-    while (Date.now() < expiresAt) {
-      if (authCancelRequested) throw new Error("Microsoft sign-in was canceled.");
-      await sleep(interval);
-      const response = await fetch(MICROSOFT_TOKEN_URL, {
-        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-        body: new URLSearchParams({
-          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-          client_id: clientId, device_code: String(device.device_code || "")
-        }), signal: AbortSignal.timeout(30000)
-      });
-      let result = {};
-      try { result = await response.json(); } catch {}
-      if (response.ok && result.access_token) { microsoftToken = result; break; }
-      if (result.error === "authorization_pending") continue;
-      if (result.error === "slow_down") { interval += 5000; continue; }
-      if (result.error === "authorization_declined") throw new Error("Microsoft sign-in was declined.");
-      if (result.error === "expired_token") throw new Error("The Microsoft sign-in code expired. Please try again.");
-      throw new Error(String(result.error_description || "Microsoft sign-in did not complete."));
-    }
-    if (!microsoftToken) throw new Error("The Microsoft sign-in code expired. Please try again.");
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+    const state = crypto.randomBytes(24).toString("hex");
+
+    callbackServer = http.createServer();
+    await new Promise((resolve, reject) => {
+      callbackServer.once("error", reject);
+      callbackServer.listen(0, "127.0.0.1", resolve);
+    });
+    const address = callbackServer.address();
+    if (!address || typeof address === "string") throw new Error("Could not start the secure local sign-in callback.");
+    const redirectUri = "http://localhost:" + address.port + "/callback";
+
+    const authorizeUrl = new URL(MICROSOFT_AUTHORIZE_URL);
+    authorizeUrl.search = new URLSearchParams({
+      client_id: clientId,
+      response_type: "code",
+      redirect_uri: redirectUri,
+      response_mode: "query",
+      scope: "XboxLive.signin offline_access",
+      state,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      prompt: "select_account"
+    }).toString();
+
+    reportAuthProgress("browser-login", "Sign in to your Microsoft account in the browser. Moon Launcher will continue automatically.");
+    await shell.openExternal(authorizeUrl.href);
+
+    const authorizationCode = await waitForMicrosoftAuthorization(callbackServer, state, redirectUri);
+    callbackServer = null;
+
+    reportAuthProgress("token-exchange", "Finishing Microsoft sign-in…");
+    const microsoftToken = await postFormJson(MICROSOFT_TOKEN_URL, {
+      client_id: clientId,
+      grant_type: "authorization_code",
+      code: authorizationCode,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+      scope: "XboxLive.signin offline_access"
+    }, "Could not complete Microsoft sign-in");
+
+    if (!microsoftToken.access_token) throw new Error("Microsoft did not return an access token.");
     const session = await exchangeMicrosoftForMinecraft(microsoftToken.access_token, true);
     const account = {
       clientId, profile: session.profile, xuid: session.xuid,
@@ -784,6 +854,7 @@ async function signInWithMicrosoft() {
     reportAuthProgress("signed-in", "Signed in as " + session.profile.name + ".");
     return { signedIn: true, username: session.profile.name, uuid: session.profile.id };
   } catch (error) {
+    if (callbackServer?.listening) callbackServer.close();
     reportAuthProgress("error", error.message || "Microsoft sign-in failed.");
     throw error;
   } finally { authInProgress = false; }
