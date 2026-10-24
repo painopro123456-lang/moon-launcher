@@ -16,7 +16,7 @@ GitHub keeps preview builds for 14 days. The installer is unsigned, so Windows m
 ## Features
 
 - Browse Minecraft versions and create separate vanilla instances.
-- Sign in with Microsoft's device-code flow. Moon Launcher shows a one-time code and opens Microsoft's sign-in page when you choose.
+- Sign in with Microsoft in your default browser. After you finish, the browser returns to Moon Launcher automatically.
 - Install and launch vanilla Minecraft. Game files are shared where possible; each instance keeps its own saves, options, and mods folder.
 - Choose the Moon Launcher directory in Settings. Existing instance and game data is moved into the selected folder. Microsoft account tokens remain encrypted in Windows secure storage.
 - Choose memory, download connections, and whether Minecraft starts fullscreen.
@@ -24,7 +24,7 @@ GitHub keeps preview builds for 14 days. The installer is unsigned, so Windows m
 
 ## One-time Microsoft setup
 
-For Microsoft sign-in, each user needs a public Application (client) ID from a Microsoft Entra app registration. Set it up as a desktop/public client, allow public client flows, and use personal Microsoft accounts. Paste the Application (client) ID into Moon Launcher Settings. The app never requests a Microsoft password or client secret.
+For Microsoft sign-in, each user needs a public Application (client) ID from a Microsoft Entra app registration. Configure supported account types to include personal Microsoft accounts. Under **Authentication**, add the **Mobile and desktop applications** platform and the `http://localhost` redirect URI; enable public client flows if the portal offers that setting. Paste the Application (client) ID into Moon Launcher Settings. The app opens Microsoft sign-in in your default browser and returns to the launcher automatically. It never asks you to enter your Microsoft password inside the launcher or uses a client secret.
 
 Sign-in can only complete for an account that owns Minecraft: Java Edition. Moon Launcher stores its refresh token encrypted with Windows secure storage.
 
