@@ -129,7 +129,6 @@ function renderAccount(status) {
     : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
   $("#sign-in-button").hidden = Boolean(status?.signedIn);
   $("#sign-out-button").hidden = !status?.signedIn;
-  if (status?.clientId !== undefined) $("#microsoft-client-id").value = status.clientId;
 }
 
 async function refreshAccountStatus() {
@@ -178,17 +177,6 @@ async function changeLauncherDirectory() {
     showToast("Moon Launcher files are now stored in the chosen folder.");
   } catch (error) {
     showToast(error.message || "Could not change the Moon Launcher folder.");
-  }
-}
-
-async function saveClientId() {
-  try {
-    const result = await api.saveMicrosoftClientId($("#microsoft-client-id").value);
-    $("#microsoft-client-id").value = result.clientId;
-    await refreshAccountStatus();
-    showToast(result.configured ? "Microsoft Application ID saved." : "Microsoft Application ID cleared.");
-  } catch (error) {
-    showToast(error.message || "Could not save the Microsoft Application ID.");
   }
 }
 
@@ -451,8 +439,6 @@ $("#open-folder").addEventListener("click", () => api.openInstanceFolder());
 $(".account-card").addEventListener("click", () => { if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); });
 $(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
-$("#save-client-id").addEventListener("click", saveClientId);
-$("#open-app-registration").addEventListener("click", () => api.openMicrosoftRegistration().catch((error) => showToast(error.message)));
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
 $("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); showToast("Minecraft account signed out."); } catch (error) { showToast(error.message); } });
 $("#save-launcher-settings").addEventListener("click", saveLauncherSettings);
