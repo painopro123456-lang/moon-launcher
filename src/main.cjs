@@ -793,8 +793,13 @@ async function readJsonResponse(response, context) {
   let data = {};
   try { data = await response.json(); } catch {}
   if (!response.ok) {
-    const detail = String(data.error_description || data.Message || data.message || "").replace(/[\r\n]+/g, " ").slice(0, 220);
-    throw new Error(context + (detail ? ": " + detail : " (HTTP " + response.status + ")."));
+    // Minecraft Services uses `errorMessage` (not `message`) for errors such as
+    // "Invalid app registration". Preserve that provider detail so users can
+    // distinguish an app-registration rejection from account/ownership errors.
+    const detail = String(data.errorMessage || data.error_description || data.Message || data.message || data.error || "").replace(/[\r\n]+/g, " ").slice(0, 220);
+    const path = typeof data.path === "string" ? data.path.replace(/[\r\n]+/g, " ").slice(0, 120) : "";
+    const status = " (HTTP " + response.status + ").";
+    throw new Error(context + (detail ? ": " + detail : status) + (path ? " [" + path + "]" : ""));
   }
   return data;
 }
