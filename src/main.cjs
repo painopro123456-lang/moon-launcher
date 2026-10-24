@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const http = require("node:http");
 const os = require("node:os");
 const AdmZip = require("adm-zip");
@@ -1355,6 +1356,57 @@ async function resetCustomBackground() {
 }
 
 
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.allowPrerelease = false;
+
+function sendUpdateStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("updates:status", status);
+  }
+}
+
+autoUpdater.on("checking-for-update", () => sendUpdateStatus({ state: "checking", message: "Checking for updates…" }));
+autoUpdater.on("update-available", (info) => sendUpdateStatus({ state: "available", message: "Update " + info.version + " found. Downloading…", version: info.version }));
+autoUpdater.on("update-not-available", (info) => sendUpdateStatus({ state: "current", message: "Moon Launcher is up to date.", version: info.version }));
+autoUpdater.on("download-progress", (progress) => sendUpdateStatus({
+  state: "downloading",
+  message: "Downloading update… " + Math.round(progress.percent) + "%",
+  percent: Math.round(progress.percent)
+}));
+autoUpdater.on("update-downloaded", (info) => sendUpdateStatus({
+  state: "downloaded",
+  message: "Update " + info.version + " is ready to install. Restart Moon Launcher to finish.",
+  version: info.version
+}));
+autoUpdater.on("error", (error) => {
+  console.error("Moon Launcher update check failed:", error);
+  sendUpdateStatus({ state: "error", message: "Could not check for updates. Try again later." });
+});
+
+async function checkForLauncherUpdates() {
+  if (!app.isPackaged) {
+    const result = { state: "development", message: "Updates are available in the installed version of Moon Launcher." };
+    sendUpdateStatus(result);
+    return result;
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+    return { state: "checking", message: "Checking for updates…" };
+  } catch (error) {
+    console.error("Moon Launcher update check failed:", error);
+    const result = { state: "error", message: "Could not check for updates. Check your internet connection and try again." };
+    sendUpdateStatus(result);
+    return result;
+  }
+}
+
+ipcMain.handle("updates:check", checkForLauncherUpdates);
+ipcMain.handle("updates:install", () => {
+  if (!app.isPackaged) throw new Error("Install updates from a packaged build.");
+  autoUpdater.quitAndInstall(false, true);
+  return true;
+});
 ipcMain.handle("versions:list", fetchVersions);
 ipcMain.handle("instances:list", readInstances);
 ipcMain.handle("instances:create", (_event, input) => createInstance(input || {}));
@@ -1437,6 +1489,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   await loadLauncherPreferences();
   createWindow();
+  if (app.isPackaged) setTimeout(() => { checkForLauncherUpdates(); }, 8000);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
