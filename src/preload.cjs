@@ -1,6 +1,14 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("moonLauncher", Object.freeze({
+  checkForUpdates: () => ipcRenderer.invoke("updates:check"),
+  installUpdate: () => ipcRenderer.invoke("updates:install"),
+  onUpdateStatus: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on("updates:status", listener);
+    return () => ipcRenderer.removeListener("updates:status", listener);
+  },
   getVersions: () => ipcRenderer.invoke("versions:list"),
   getInstances: () => ipcRenderer.invoke("instances:list"),
   createInstance: (input) => ipcRenderer.invoke("instances:create", input),
