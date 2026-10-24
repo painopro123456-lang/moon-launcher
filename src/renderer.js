@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "" };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -26,6 +26,8 @@ function setView(view) {
   const titles = {
     home: ["YOUR GAME LIBRARY", "Welcome to Moon"],
     modpacks: ["BROWSE AND IMPORT", "Modpacks"],
+    mods: ["TUNE YOUR GAME", "Mod manager"],
+    servers: ["MULTIPLAYER SHORTCUTS", "Server list"],
     settings: ["MAKE IT YOURS", "Settings"]
   };
   $("#page-kicker").textContent = titles[view][0];
@@ -45,6 +47,7 @@ function renderInstances() {
     return;
   }
 
+  $("#quick-play").disabled = !state.instances.some((item) => !(item.pack?.loader && item.pack.loader !== "Vanilla"));
   for (const instance of state.instances) {
     const card = document.createElement("article");
     card.className = "instance-card";
@@ -96,6 +99,12 @@ async function launchMinecraftInstance(instanceId, button) {
 }
 
 function handleLauncherProgress(progress) {
+  const quickButton = $("#quick-play");
+  if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
+    if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
+    else if (["closed", "error"].includes(progress.status)) { quickButton.textContent = "▶ Quick Play"; quickButton.disabled = !state.instances.some((item) => !(item.pack?.loader && item.pack.loader !== "Vanilla")); delete quickButton.dataset.instanceId; }
+    else { quickButton.textContent = progress.message || "Starting…"; quickButton.disabled = true; quickButton.dataset.instanceId = progress.instanceId; }
+  }
   const card = [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === progress.instanceId);
   const button = card?.querySelector(".launch-button");
   if (!button) return;
@@ -129,11 +138,28 @@ function renderAccount(status) {
     : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
   $("#sign-in-button").hidden = Boolean(status?.signedIn);
   $("#sign-out-button").hidden = !status?.signedIn;
+  loadSavedAccounts();
 }
 
 async function refreshAccountStatus() {
   try { renderAccount(await api.getAccountStatus()); }
   catch (error) { showToast(error.message || "Could not read the saved Minecraft account."); }
+}
+
+async function loadSavedAccounts() {
+  const select = $("#account-profile-select");
+  if (!select) return;
+  try {
+    const accounts = await api.getSavedAccounts();
+    select.replaceChildren();
+    if (!accounts.length) select.add(new Option("No saved accounts yet", ""));
+    for (const account of accounts) {
+      const option = new Option(account.username + (account.active ? " · Active" : ""), account.uuid);
+      select.add(option);
+    }
+    $("#switch-account-button").disabled = !accounts.length;
+    $("#remove-account-button").disabled = !accounts.length;
+  } catch (error) { showToast(error.message || "Could not load saved accounts."); }
 }
 
 async function loadSettings() {
@@ -143,6 +169,8 @@ async function loadSettings() {
     $("#memory-setting").value = String(state.settings.memoryGb);
     $("#connections-setting").value = String(state.settings.downloadConnections);
     $("#fullscreen-setting").checked = Boolean(state.settings.fullscreen);
+    const background = await api.getCustomBackground();
+    applyCustomBackground(background.dataUrl);
   } catch (error) {
     showToast(error.message || "Could not load launcher settings.");
   }
@@ -368,6 +396,7 @@ async function loadInstances() {
   try {
     state.instances = await api.getInstances();
     renderInstances();
+    refreshModsInstanceOptions();
   } catch (error) {
     showToast("Could not load local instances.");
   }
@@ -415,6 +444,97 @@ async function importPack() {
   }
 }
 
+async function loadModsForSelectedInstance() {
+  const select = $("#mods-instance-select");
+  const selectedId = select.value;
+  state.modsInstanceId = selectedId;
+  const host = $("#mods-list");
+  host.replaceChildren();
+  if (!selectedId) {
+    const empty = document.createElement("div"); empty.className = "empty-card"; empty.textContent = "Create an instance first to manage its mods."; host.append(empty); return;
+  }
+  const loading = document.createElement("div"); loading.className = "search-message"; loading.textContent = "Loading instance mods…"; host.append(loading);
+  try {
+    const result = await api.listInstanceMods(selectedId);
+    host.replaceChildren();
+    if (!result.mods.length) {
+      const empty = document.createElement("div"); empty.className = "empty-card"; empty.textContent = "No .jar mods found. Add mod files to this instance's mods folder, then refresh."; host.append(empty); return;
+    }
+    for (const mod of result.mods) {
+      const row = document.createElement("article"); row.className = "mod-row";
+      const info = document.createElement("div"); info.className = "mod-row-info";
+      const title = document.createElement("strong"); title.textContent = mod.name;
+      const detail = document.createElement("span"); detail.textContent = (mod.enabled ? "Enabled" : "Disabled") + " · " + formatBytes(mod.size);
+      info.append(title, detail);
+      const actions = document.createElement("div"); actions.className = "setting-actions";
+      const toggle = document.createElement("button"); toggle.className = "secondary-button"; toggle.textContent = mod.enabled ? "Disable" : "Enable";
+      toggle.addEventListener("click", async () => { toggle.disabled = true; try { await api.toggleInstanceMod(selectedId, mod.name); await loadModsForSelectedInstance(); showToast(mod.enabled ? "Mod disabled." : "Mod enabled."); } catch (error) { toggle.disabled = false; showToast(error.message || "Could not toggle mod."); } });
+      const remove = document.createElement("button"); remove.className = "text-button"; remove.textContent = "Remove";
+      remove.addEventListener("click", async () => { if (!confirm("Remove " + mod.name + " from this instance?")) return; try { await api.deleteInstanceMod(selectedId, mod.name); await loadModsForSelectedInstance(); showToast("Mod removed from this instance."); } catch (error) { showToast(error.message || "Could not remove mod."); } });
+      actions.append(toggle, remove); row.append(info, actions); host.append(row);
+    }
+  } catch (error) {
+    host.replaceChildren(); const message = document.createElement("div"); message.className = "search-message"; message.textContent = error.message || "Could not read this instance's mods."; host.append(message);
+  }
+}
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+function refreshModsInstanceOptions() {
+  const select = $("#mods-instance-select");
+  const previous = select.value;
+  select.replaceChildren();
+  if (!state.instances.length) select.add(new Option("No instances available", ""));
+  for (const instance of state.instances) select.add(new Option(instance.name + " · " + instance.minecraftVersion, instance.id));
+  if (state.instances.some((item) => item.id === previous)) select.value = previous;
+  else if (state.instances[0]) select.value = state.instances[0].id;
+  loadModsForSelectedInstance();
+}
+async function loadServers() {
+  try { state.servers = await api.getServers(); renderServers(); }
+  catch (error) { showToast(error.message || "Could not load saved servers."); }
+}
+function renderServers() {
+  const host = $("#server-list"); host.replaceChildren();
+  if (!state.servers.length) {
+    const empty = document.createElement("div"); empty.className = "empty-card"; empty.textContent = "No servers saved yet. Add a server above to keep its address handy."; host.append(empty); return;
+  }
+  for (const server of state.servers) {
+    const row = document.createElement("article"); row.className = "server-card";
+    const info = document.createElement("div"); info.className = "server-card-info";
+    const name = document.createElement("h3"); name.textContent = server.name;
+    const address = document.createElement("code"); address.textContent = server.address;
+    info.append(name, address);
+    const actions = document.createElement("div"); actions.className = "setting-actions";
+    const copy = document.createElement("button"); copy.className = "secondary-button"; copy.textContent = "Copy address";
+    copy.addEventListener("click", async () => { try { await navigator.clipboard.writeText(server.address); showToast("Server address copied."); } catch { showToast("Copy failed. Select the address and copy it manually."); } });
+    const remove = document.createElement("button"); remove.className = "text-button"; remove.textContent = "Remove";
+    remove.addEventListener("click", async () => { try { state.servers = await api.removeServer(server.id); renderServers(); showToast("Server removed."); } catch (error) { showToast(error.message || "Could not remove server."); } });
+    actions.append(copy, remove); row.append(info, actions); host.append(row);
+  }
+}
+function applyCustomBackground(dataUrl) {
+  const hero = $(".hero-card");
+  if (!hero) return;
+  hero.style.backgroundImage = dataUrl
+    ? "linear-gradient(90deg, rgba(20, 17, 30, .97) 0%, rgba(20, 17, 30, .82) 52%, rgba(20, 17, 30, .35) 100%), url('" + dataUrl + "')"
+    : "";
+}
+async function chooseCustomBackground() {
+  try {
+    const result = await api.chooseCustomBackground();
+    if (result.canceled) return;
+    applyCustomBackground(result.dataUrl);
+    showToast("Custom background updated.");
+  } catch (error) { showToast(error.message || "Could not set that background."); }
+}
+async function resetCustomBackground() {
+  try { await api.resetCustomBackground(); applyCustomBackground(""); showToast("Default background restored."); }
+  catch (error) { showToast(error.message || "Could not reset background."); }
+}
+
 async function searchModpacks() {
   const query = $("#modpack-query").value.trim();
   const host = $("#modpack-results");
@@ -439,6 +559,38 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
+$("#quick-play").addEventListener("click", () => {
+  const instance = state.instances.find((item) => !(item.pack?.loader && item.pack.loader !== "Vanilla"));
+  const card = instance && [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === instance.id);
+  const launchButton = card?.querySelector(".launch-button");
+  if (launchButton && !launchButton.disabled) launchButton.click();
+  else if (instance) showToast("That instance is already starting or running.");
+});
+$("#mods-instance-select").addEventListener("change", loadModsForSelectedInstance);
+$("#refresh-mods").addEventListener("click", loadModsForSelectedInstance);
+$("#open-mods-folder").addEventListener("click", async () => { if (!$("#mods-instance-select").value) return showToast("Create an instance first."); try { await api.openInstanceModsFolder($("#mods-instance-select").value); } catch (error) { showToast(error.message || "Could not open the mods folder."); } });
+$("#server-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  try { state.servers = await api.addServer({ name: data.get("name"), address: data.get("address") }); form.reset(); renderServers(); showToast("Server saved."); }
+  catch (error) { showToast(error.message || "Could not save server."); }
+});
+$("#choose-background").addEventListener("click", chooseCustomBackground);
+$("#reset-background").addEventListener("click", resetCustomBackground);
+$("#switch-account-button").addEventListener("click", async () => {
+  const uuid = $("#account-profile-select").value;
+  if (!uuid) return;
+  try { renderAccount(await api.switchSavedAccount(uuid)); await loadSavedAccounts(); showToast("Switched Minecraft account."); }
+  catch (error) { showToast(error.message || "Could not switch account."); }
+});
+$("#remove-account-button").addEventListener("click", async () => {
+  const uuid = $("#account-profile-select").value;
+  if (!uuid) return;
+  if (!confirm("Remove this saved account from Moon Launcher? You may need to sign in again to use it.")) return;
+  try { const result = await api.removeSavedAccount(uuid); renderAccount(result.status); await loadSavedAccounts(); showToast("Saved account removed."); }
+  catch (error) { showToast(error.message || "Could not remove saved account."); }
+});
 document.querySelectorAll(".quick-version").forEach((button) => {
   button.addEventListener("click", () => {
     const version = button.dataset.version;
@@ -466,7 +618,7 @@ $(".account-card").addEventListener("click", () => { if (state.account?.signedIn
 $(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
-$("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); showToast("Minecraft account signed out."); } catch (error) { showToast(error.message); } });
+$("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); await loadSavedAccounts(); showToast("Signed out. Your saved account profiles remain available."); } catch (error) { showToast(error.message); } });
 $("#save-launcher-settings").addEventListener("click", saveLauncherSettings);
 $("#change-game-directory").addEventListener("click", changeLauncherDirectory);
 $("#close-auth-dialog").addEventListener("click", cancelMicrosoftSignIn);
@@ -487,4 +639,5 @@ $("#window-close").addEventListener("click", () => api.closeWindow());
 loadVersions();
 loadInstances();
 loadSettings();
+loadServers();
 refreshAccountStatus();
