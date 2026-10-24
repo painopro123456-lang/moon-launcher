@@ -751,7 +751,7 @@ async function waitForMicrosoftAuthorization(server, expectedState, redirectUri)
         return;
       }
 
-      if (callbackUrl.pathname !== "/callback") {
+      if (callbackUrl.pathname !== "/" && callbackUrl.pathname !== "/callback") {
         response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         response.end("Not found.");
         return;
@@ -809,7 +809,7 @@ async function signInWithMicrosoft() {
     });
     const address = callbackServer.address();
     if (!address || typeof address === "string") throw new Error("Could not start the secure local sign-in callback.");
-    const redirectUri = "http://localhost:" + address.port + "/callback";
+    const redirectUri = "http://localhost:" + address.port + "/";
 
     const authorizeUrl = new URL(MICROSOFT_AUTHORIZE_URL);
     authorizeUrl.search = new URLSearchParams({
