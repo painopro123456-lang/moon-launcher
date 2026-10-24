@@ -7,7 +7,8 @@
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis --x64 --publish never"
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "release:win": "electron-builder --win nsis --x64 --publish always"
   },
   "engines": {
     "node": ">=22.16.0"
@@ -18,7 +19,8 @@
   },
   "devDependencies": {
     "electron": "45.0.0",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "electron-updater": "^6.6.2"
   },
   "build": {
     "appId": "dev.moon.launcher",
@@ -44,6 +46,13 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Moon Launcher"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "painopro123456-lang",
+        "repo": "moon-launcher"
+      }
+    ]
   }
 }
