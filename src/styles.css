@@ -250,3 +250,12 @@ button { color: inherit; cursor: pointer; }
   .account-profiles-row { align-items: stretch; flex-direction: column; }
   .account-profiles-row select { width: 100%; }
 }
+
+
+.modpack-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 18px 0 8px; padding: 14px 15px; border: 1px solid var(--border); border-radius: 13px; background: #15131c; }
+.pagination-summary { color: var(--muted); font-size: 11px; }
+.pagination-controls { display: flex; align-items: center; gap: 10px; }
+.pagination-button { min-height: 34px; padding: 0 12px; font-size: 10px; }
+.pagination-button:disabled { opacity: .38; cursor: not-allowed; }
+.pagination-page { min-width: 95px; color: #d8d0e8; font-size: 11px; text-align: center; font-weight: 700; }
+@media (max-width: 760px) { .modpack-pagination { align-items: stretch; flex-direction: column; } .pagination-controls { justify-content: space-between; } }
