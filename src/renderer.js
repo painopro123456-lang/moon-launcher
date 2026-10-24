@@ -671,6 +671,27 @@ $(".account-card").addEventListener("keydown", (event) => { if (event.key === "E
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
 $("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); await loadSavedAccounts(); showToast("Signed out. Your saved account profiles remain available."); } catch (error) { showToast(error.message); } });
+$("#check-updates-button").addEventListener("click", async () => {
+  const button = $("#check-updates-button");
+  button.disabled = true;
+  try { await api.checkForUpdates(); }
+  catch (error) { showToast(error.message || "Could not check for updates."); }
+  finally { button.disabled = false; }
+});
+$("#restart-update-button").addEventListener("click", async () => {
+  $("#restart-update-button").disabled = true;
+  $("#update-status").textContent = "Restarting to install the update…";
+  try { await api.installUpdate(); }
+  catch (error) { $("#restart-update-button").disabled = false; showToast(error.message || "Could not restart to install update."); }
+});
+api.onUpdateStatus((status) => {
+  if (!status || typeof status.message !== "string") return;
+  $("#update-status").textContent = status.message;
+  $("#restart-update-button").hidden = status.state !== "downloaded";
+  $("#check-updates-button").disabled = ["checking", "downloading"].includes(status.state);
+  if (status.state === "current") $("#check-updates-button").disabled = false;
+  if (status.state === "error") $("#check-updates-button").disabled = false;
+});
 $("#save-launcher-settings").addEventListener("click", saveLauncherSettings);
 $("#change-game-directory").addEventListener("click", changeLauncherDirectory);
 $("#close-auth-dialog").addEventListener("click", cancelMicrosoftSignIn);
