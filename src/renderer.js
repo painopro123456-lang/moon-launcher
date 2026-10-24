@@ -223,6 +223,10 @@ async function cancelMicrosoftSignIn() {
 
 api.onAuthProgress((progress) => {
   if (progress.status === "starting") openAuthDialog();
+  if (progress.status === "browser-login" || progress.status === "token-exchange") {
+    $("#auth-status-message").textContent = progress.message || "Continue signing in through your browser…";
+    $("#auth-code-panel").hidden = true;
+  }
   if (progress.status === "device-code") {
     state.verificationUri = progress.verificationUri;
     $("#auth-status-message").textContent = progress.message || "Enter this code on Microsoft's sign-in page.";
