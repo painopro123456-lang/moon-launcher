@@ -739,7 +739,12 @@ async function signInWithMicrosoft() {
     if (verification.protocol !== "https:" || !["microsoft.com", "www.microsoft.com", "login.microsoftonline.com"].includes(verification.hostname.toLowerCase())) {
       throw new Error("Microsoft returned an unexpected sign-in link.");
     }
-    reportAuthProgress("device-code", "Enter this code on Microsoft's sign-in page.", {
+    // Open Microsoft sign-in in the user's default browser as soon as the device code is ready.
+    // Keep the device-code flow working even if the browser cannot be launched automatically.
+    await shell.openExternal(verification.href).catch((error) => {
+      console.error("Could not open Microsoft sign-in in the browser:", error);
+    });
+    reportAuthProgress("device-code", "Microsoft sign-in opened in your browser. Enter the code shown here.", {
       userCode: String(device.user_code || ""), verificationUri
     });
 
