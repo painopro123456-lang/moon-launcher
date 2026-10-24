@@ -127,9 +127,17 @@ button { color: inherit; cursor: pointer; }
 .dialog-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 5px; }
 .dialog-header h2 { margin: 6px 0 0; font-size: 21px; }
 .close-button { width: 30px; height: 30px; font-size: 20px; }
-.field-label { display: grid; gap: 7px; color: #d8d1e6; font-size: 10px; font-weight: 700; }
-.field-label input, .field-label select { height: 39px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px; outline: 0; background: #100e16; color: var(--text); font-size: 11px; }
-.field-label input:focus, .field-label select:focus { border-color: #a98cff88; }
+.field-label { display: grid; gap: 8px; color: #ded8eb; font-size: 11px; font-weight: 700; }
+.field-label input { height: 41px; padding: 0 11px; border: 1px solid var(--border); border-radius: 10px; outline: 0; background: #100e16; color: var(--text); font-size: 11px; }
+.field-label input:focus { border-color: #a98cff88; }
+.select-wrap { position: relative; display: block; width: 100%; }
+.field-label select { width: 100%; height: 46px; padding: 0 42px 0 14px; appearance: none; border: 1px solid rgba(169, 140, 255, .22); border-radius: 12px; outline: 0; background: linear-gradient(145deg, #211b2b, #14121b); color: #f3efff; font-size: 12px; font-weight: 650; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 4px 12px rgba(0, 0, 0, .16); transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; cursor: pointer; }
+.field-label select:hover:not(:disabled) { border-color: rgba(185, 155, 255, .52); background: linear-gradient(145deg, #292135, #17141f); }
+.field-label select:focus-visible { border-color: #b99bff; box-shadow: 0 0 0 3px rgba(169, 140, 255, .18), inset 0 1px 0 rgba(255, 255, 255, .06); }
+.field-label select:disabled { color: #aaa3b5; cursor: wait; opacity: .76; }
+.field-label select option, .field-label select optgroup { background: #191621; color: #f3efff; }
+.field-label select::-ms-expand { display: none; }
+.select-caret { position: absolute; top: 18px; right: 16px; width: 8px; height: 8px; border-right: 1.5px solid #c7b4ee; border-bottom: 1.5px solid #c7b4ee; border-radius: 1px; transform: rotate(45deg); pointer-events: none; }
 .dialog-note { margin: 0; color: var(--quiet); font-size: 10px; line-height: 1.45; }
 .dialog-submit { width: 100%; }
 .toast { position: fixed; right: 24px; bottom: 23px; z-index: 10; max-width: 390px; padding: 12px 15px; border: 1px solid #b99dff40; border-radius: 11px; background: #211c2b; color: #e6ddff; font-size: 11px; box-shadow: 0 10px 35px #0006; opacity: 0; pointer-events: none; transform: translateY(8px); transition: .2s ease; }

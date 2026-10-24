@@ -111,7 +111,14 @@
     <form id="instance-form" method="dialog">
       <div class="dialog-header"><div><div class="eyebrow">START A FRESH PROFILE</div><h2>New instance</h2></div><button type="button" class="close-button" id="close-instance-dialog" aria-label="Close">×</button></div>
       <label class="field-label">Instance name<input name="name" placeholder="My survival world" maxlength="80" required></label>
-      <label class="field-label">Minecraft version<select name="version" id="version-select" required><option value="">Loading versions…</option></select></label>
+      <label class="field-label">Minecraft version
+        <span class="select-wrap">
+          <select name="version" id="version-select" required disabled>
+            <option value="">Loading Minecraft versions…</option>
+          </select>
+          <span class="select-caret" aria-hidden="true"></span>
+        </span>
+      </label>
       <p class="dialog-note">This creates an instance entry. Downloading and launching the game are still in progress.</p>
       <button class="primary-button dialog-submit" value="create">Create instance</button>
     </form>

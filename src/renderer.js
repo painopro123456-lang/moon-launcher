@@ -130,13 +130,26 @@ async function loadVersions() {
     setCatalogState(true, "Minecraft catalog online");
 
     const versionOptions = state.versions.slice(0, 250);
-    select.replaceChildren();
+    const releases = document.createElement("optgroup");
+    releases.label = "Stable releases";
+    const snapshots = document.createElement("optgroup");
+    snapshots.label = "Snapshots";
+
     for (const version of versionOptions) {
       const option = document.createElement("option");
       option.value = version.id;
-      option.textContent = version.id + (version.type === "snapshot" ? " · Snapshot" : "");
-      select.append(option);
+      const isLatestRelease = version.id === catalog.latest?.release;
+      const isLatestSnapshot = version.id === catalog.latest?.snapshot;
+      option.textContent = version.id
+        + (isLatestRelease ? " · Latest release" : "")
+        + (isLatestSnapshot ? " · Latest snapshot" : "");
+      (version.type === "snapshot" ? snapshots : releases).append(option);
     }
+
+    select.replaceChildren();
+    if (releases.children.length) select.append(releases);
+    if (snapshots.children.length) select.append(snapshots);
+    select.disabled = false;
   } catch (error) {
     setCatalogState(false, "Minecraft catalog unavailable");
     select.replaceChildren(new Option("Could not load versions", ""));
