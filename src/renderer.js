@@ -99,6 +99,12 @@ function handleLauncherProgress(progress) {
   const card = [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === progress.instanceId);
   const button = card?.querySelector(".launch-button");
   if (!button) return;
+  if (progress.status === "running") {
+    const instance = state.instances.find((item) => item.id === progress.instanceId);
+    if (instance) instance.installState = "installed";
+    const badge = card.querySelector(".instance-badge");
+    if (badge) badge.textContent = "Ready";
+  }
   if (["closed", "error"].includes(progress.status)) {
     button.disabled = false;
     const instance = state.instances.find((item) => item.id === progress.instanceId);
