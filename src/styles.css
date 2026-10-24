@@ -40,6 +40,12 @@ button { color: inherit; cursor: pointer; }
 .pulse, .status-dot { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: #72dfa9; box-shadow: 0 0 10px #72dfa970; }
 .main-panel { min-width: 0; flex: 1; padding: 34px clamp(28px, 5vw, 68px) 60px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+.topbar { -webkit-app-region: drag; }
+.topbar button { -webkit-app-region: no-drag; }
+.window-controls { display: flex; align-items: center; gap: 4px; }
+.window-control { width: 31px; height: 31px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: #ffffff05; color: var(--muted); font-size: 15px; line-height: 1; }
+.window-control:hover { background: #ffffff12; color: var(--text); }
+.window-control.close:hover { border-color: transparent; background: #d95763; color: #fff; }
 .topbar h1 { margin: 7px 0 0; font-size: clamp(22px, 2vw, 29px); letter-spacing: -.04em; }
 .topbar-right { display: flex; align-items: center; gap: 18px; }
 .catalog-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }

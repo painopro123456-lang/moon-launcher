@@ -179,8 +179,22 @@ ipcMain.handle("launcher:open-data-folder", async () => {
   return shell.openPath(getInstancesPath());
 });
 
+ipcMain.handle("window:minimize", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+});
+ipcMain.handle("window:toggle-maximize", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+  return mainWindow.isMaximized();
+});
+ipcMain.handle("window:close", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+});
+
 function createWindow() {
   mainWindow = new BrowserWindow({
+    frame: false,
     width: 1180,
     height: 780,
     minWidth: 860,
@@ -194,6 +208,7 @@ function createWindow() {
       sandbox: true
     }
   });
+  mainWindow.removeMenu();
   mainWindow.loadFile(path.join(__dirname, "index.html"));
 }
 

@@ -219,6 +219,15 @@ $("#modpack-query").addEventListener("keydown", (event) => {
 });
 $("#open-folder").addEventListener("click", () => api.openInstanceFolder());
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
+$("#window-minimize").addEventListener("click", () => api.minimizeWindow());
+$("#window-maximize").addEventListener("click", async () => {
+  const maximized = await api.toggleMaximizeWindow();
+  const button = $("#window-maximize");
+  button.textContent = maximized ? "❐" : "□";
+  button.title = maximized ? "Restore" : "Maximize";
+  button.setAttribute("aria-label", button.title);
+});
+$("#window-close").addEventListener("click", () => api.closeWindow());
 
 loadVersions();
 loadInstances();

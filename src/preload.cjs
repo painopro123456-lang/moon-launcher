@@ -7,5 +7,8 @@ contextBridge.exposeInMainWorld("moonLauncher", Object.freeze({
   importModpack: () => ipcRenderer.invoke("modpacks:import"),
   searchModpacks: (query) => ipcRenderer.invoke("modpacks:search", query),
   openModrinthProject: (slug) => ipcRenderer.invoke("modpacks:open", slug),
-  openInstanceFolder: () => ipcRenderer.invoke("launcher:open-data-folder")
+  openInstanceFolder: () => ipcRenderer.invoke("launcher:open-data-folder"),
+  minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
+  toggleMaximizeWindow: () => ipcRenderer.invoke("window:toggle-maximize"),
+  closeWindow: () => ipcRenderer.invoke("window:close")
 }));
