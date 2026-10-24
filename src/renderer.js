@@ -137,6 +137,11 @@ function renderAccount(status) {
   $("#settings-account-detail").textContent = status?.signedIn
     ? "This Microsoft account is ready for Minecraft."
     : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
+  const clientInput = $("#microsoft-client-id");
+  if (clientInput && typeof status?.clientId === "string" && clientInput.dataset.dirty !== "true") {
+    clientInput.value = status.clientId;
+    $("#microsoft-client-id-status").textContent = status.clientId ? "Client ID is saved on this PC." : "No client ID configured.";
+  }
   $("#sign-in-button").hidden = Boolean(status?.signedIn);
   $("#sign-out-button").hidden = !status?.signedIn;
   loadSavedAccounts();
@@ -670,6 +675,30 @@ $(".account-card").addEventListener("click", () => { if (state.account?.signedIn
 $(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
+$("#microsoft-client-id").addEventListener("input", () => { $("#microsoft-client-id").dataset.dirty = "true"; });
+$("#save-microsoft-client-id").addEventListener("click", async () => {
+  const input = $("#microsoft-client-id");
+  const button = $("#save-microsoft-client-id");
+  const status = $("#microsoft-client-id-status");
+  try {
+    button.disabled = true;
+    status.textContent = "Saving client ID…";
+    const result = await api.saveMicrosoftClientId(input.value.trim());
+    input.value = result.clientId || "";
+    input.dataset.dirty = "false";
+    status.textContent = result.configured ? "Client ID saved. You can now try Microsoft sign-in." : "Client ID cleared.";
+    showToast(result.configured ? "Microsoft client ID saved." : "Microsoft client ID cleared.");
+  } catch (error) {
+    status.textContent = error.message || "Could not save the client ID.";
+    showToast(status.textContent);
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#open-microsoft-registration").addEventListener("click", async () => {
+  try { await api.openMicrosoftRegistration(); }
+  catch (error) { showToast(error.message || "Could not open Microsoft app registrations."); }
+});
 $("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); await loadSavedAccounts(); showToast("Signed out. Your saved account profiles remain available."); } catch (error) { showToast(error.message); } });
 $("#save-launcher-settings").addEventListener("click", saveLauncherSettings);
 $("#change-game-directory").addEventListener("click", changeLauncherDirectory);
