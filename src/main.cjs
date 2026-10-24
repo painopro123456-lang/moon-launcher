@@ -1229,7 +1229,7 @@ async function listInstanceMods(instanceId) {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const mods = [];
   for (const entry of entries) {
-    if (!entry.isFile() || !/\\.jar(?:\\.disabled)?$/i.test(entry.name)) continue;
+    if (!entry.isFile() || !/\.jar(?:\.disabled)?$/i.test(entry.name)) continue;
     const stat = await fs.stat(path.join(directory, entry.name));
     mods.push({ name: entry.name, enabled: !entry.name.toLowerCase().endsWith(".jar.disabled"), size: stat.size });
   }
@@ -1238,7 +1238,7 @@ async function listInstanceMods(instanceId) {
 async function toggleInstanceMod(instanceId, fileName) {
   const instance = await findInstance(instanceId);
   const name = String(fileName || "");
-  if (!name || name !== path.basename(name) || !/\\.jar(?:\\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
+  if (!name || name !== path.basename(name) || !/\.jar(?:\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
   const directory = path.join(getInstancesPath(), instance.id, "mods");
   const source = path.join(directory, name);
   const stat = await fs.lstat(source).catch(() => null);
@@ -1250,7 +1250,7 @@ async function toggleInstanceMod(instanceId, fileName) {
 async function deleteInstanceMod(instanceId, fileName) {
   const instance = await findInstance(instanceId);
   const name = String(fileName || "");
-  if (!name || name !== path.basename(name) || !/\\.jar(?:\\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
+  if (!name || name !== path.basename(name) || !/\.jar(?:\.disabled)?$/i.test(name)) throw new Error("Invalid mod file name.");
   const target = path.join(getInstancesPath(), instance.id, "mods", name);
   const stat = await fs.lstat(target).catch(() => null);
   if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error("That mod file was not found.");
@@ -1283,7 +1283,7 @@ async function writeServers(servers) {
 }
 function validateServerAddress(value) {
   const address = String(value || "").trim();
-  if (address.length > 255 || /[\\s/\\\\?#@]/.test(address)) throw new Error("Enter a server hostname or hostname:port, without a URL.");
+  if (address.length > 255 || /[\s/\\?#@]/.test(address)) throw new Error("Enter a server hostname or hostname:port, without a URL.");
   const match = address.match(/^([a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?$/);
   if (!match || match[1].startsWith(".") || match[1].endsWith(".") || match[1].includes("..")) throw new Error("Enter a valid server address, such as play.example.net:25565.");
   if (match[2] && (Number(match[2]) < 1 || Number(match[2]) > 65535)) throw new Error("Server port must be between 1 and 65535.");
