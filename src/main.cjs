@@ -413,18 +413,22 @@ async function applyMrpackOverrides(zip, prefix, instanceDirectory, totals, proj
   return copied;
 }
 
-async function downloadMoonMenuJar() {
+async function getLatestMoonMenuAsset() {
   const response = await fetch(MOON_MENU_RELEASE_API, {
     headers: { Accept: "application/vnd.github+json", "User-Agent": MODRINTH_USER_AGENT },
     signal: AbortSignal.timeout(20000)
   });
-  if (!response.ok) throw new Error("Moon Menu's latest GitHub release could not be found (HTTP " + response.status + ").");
+  if (!response.ok) return null;
   const release = await response.json();
   const asset = (release.assets || []).find((item) => /^glassmenu-[0-9][A-Za-z0-9.+_-]*\.jar$/i.test(item.name || ""));
-  if (!asset || !asset.browser_download_url) {
-    throw new Error("Moon Menu does not have a published JAR release yet. Publish a release from the glassmenu repository and try again.");
-  }
-  if (Number(asset.size) > MAX_MOON_MENU_JAR_BYTES) throw new Error("The Moon Menu JAR is larger than Moon Launcher allows.");
+  if (!asset || !asset.browser_download_url || Number(asset.size) > MAX_MOON_MENU_JAR_BYTES) return null;
+  return { release, asset };
+}
+
+async function downloadMoonMenuJar(releaseInfo) {
+  const info = releaseInfo || await getLatestMoonMenuAsset();
+  if (!info) throw new Error("Moon Menu's published JAR is currently unavailable.");
+  const { release, asset } = info;
   const url = new URL(asset.browser_download_url);
   if (url.protocol !== "https:" || !["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"].includes(url.hostname)) {
     throw new Error("Moon Menu's release uses an unsupported download host.");
@@ -449,22 +453,36 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
   const progressId = projectId || "local-import";
   let includeMoonMenu = false;
   let moonMenuRelease = null;
-  const compatibleMoonMenuPack = pack.version === "26.2"
-    && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader");
-  if (compatibleMoonMenuPack) {
-    const choice = await dialog.showMessageBox(mainWindow, {
-      type: "question",
-      buttons: ["Include Moon Menu", "No thanks"],
-      defaultId: 0,
-      cancelId: 1,
-      title: "Include Moon Menu?",
-      message: "Add Moon Menu to this modpack?",
-      detail: "Moon Menu is available for Minecraft 26.2 with Fabric. It will be installed into this instance's mods folder."
+  const isFabricApiPath = (value) => {
+    const normalized = String(value || "").replace(/\\/g, "/").toLowerCase();
+    return normalized.startsWith("mods/") && normalized.endsWith(".jar") && normalized.split("/").pop().includes("fabric-api");
+  };
+  const hasFabricApi = manifest.files.some((file) => isFabricApiPath(file?.path))
+    || zip.getEntries().some((entry) => {
+      const normalized = String(entry.entryName || "").replace(/\\/g, "/");
+      return (normalized.startsWith("overrides/") || normalized.startsWith("client-overrides/"))
+        && isFabricApiPath(normalized.slice(normalized.indexOf("/") + 1));
     });
-    includeMoonMenu = choice.response === 0;
-    if (includeMoonMenu) {
-      reportModpackProgress(progressId, "Downloading Moon Menu…", 0, 0);
-      moonMenuRelease = await downloadMoonMenuJar();
+  const compatibleMoonMenuPack = pack.version === "26.2"
+    && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader")
+    && hasFabricApi;
+  if (compatibleMoonMenuPack) {
+    const releaseInfo = await getLatestMoonMenuAsset().catch(() => null);
+    if (releaseInfo) {
+      const choice = await dialog.showMessageBox(mainWindow, {
+        type: "question",
+        buttons: ["Include Moon Menu", "No thanks"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Include Moon Menu?",
+        message: "Add Moon Menu to this modpack?",
+        detail: "This Minecraft 26.2 Fabric pack includes Fabric API, which Moon Menu requires. The mod will be installed into this instance's mods folder."
+      });
+      includeMoonMenu = choice.response === 0;
+      if (includeMoonMenu) {
+        reportModpackProgress(progressId, "Downloading Moon Menu…", 0, 0);
+        moonMenuRelease = await downloadMoonMenuJar(releaseInfo);
+      }
     }
   }
 
