@@ -25,6 +25,7 @@
   "build": {
     "appId": "dev.moon.launcher",
     "productName": "Moon Launcher",
+    "compression": "maximum",
     "directories": {
       "output": "dist"
     },
@@ -45,8 +46,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Moon Launcher",
-      "compression": "maximum"
+      "shortcutName": "Moon Launcher"
     },
     "publish": [
       {
