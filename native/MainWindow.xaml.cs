@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Text.Json;\nusing System.IO.Compression;
+using System.Text.Json;
+using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
