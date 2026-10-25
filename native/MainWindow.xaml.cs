@@ -1,37 +1,56 @@
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Win32;
 
 namespace MoonLauncher;
 
 public partial class MainWindow : Window
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(25) };
     private readonly string _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MoonLauncher");
     private readonly string _instancesPath;
+    private readonly string _serversPath;
     private List<VersionEntry> _versions = new();
 
     public MainWindow()
     {
         InitializeComponent();
         _instancesPath = Path.Combine(_root, "instances.json");
+        _serversPath = Path.Combine(_root, "servers.json");
         Directory.CreateDirectory(_root);
+        DataDirectory.Text = _root;
         RefreshInstances();
+        RefreshServers();
     }
 
-    private void SetPage(string title, string subtitle, string status)
+    private void ShowPanel(string panel)
     {
+        ModpacksPanel.Visibility = panel == "modpacks" ? Visibility.Visible : Visibility.Collapsed;
+        ServersPanel.Visibility = panel == "servers" ? Visibility.Visible : Visibility.Collapsed;
+        ModsPanel.Visibility = panel == "mods" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPanel.Visibility = panel == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        VersionsList.Visibility = panel == "versions" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SetPage(string title, string subtitle, string status, string panel = "home")
+    {
+        ShowPanel(panel);
         PageTitle.Text = title;
         PageSubtitle.Text = subtitle;
         StatusText.Text = status;
     }
 
-    private void Overview_Click(object sender, RoutedEventArgs e) => SetPage("Welcome to Moon Launcher", "A lightweight native Windows shell for Minecraft Java Edition.", "Ready. Use Load Minecraft versions to fetch the official version catalog.");
-    private void Versions_Click(object sender, RoutedEventArgs e) { VersionsList.Visibility = Visibility.Visible; SetPage("Minecraft versions", "Official Mojang version manifest.", "Load the catalog to see available releases and snapshots."); }
+    private void Overview_Click(object sender, RoutedEventArgs e) => SetPage("Welcome to Moon", "Your Minecraft library, without the extra weight.", "Ready. Browse Modrinth modpacks, load the official version catalog, or create a local profile.");
+    private void Versions_Click(object sender, RoutedEventArgs e) => SetPage("Minecraft versions", "Official Mojang version manifest.", "Load the catalog to see available releases and snapshots.", "versions");
     private void Instances_Click(object sender, RoutedEventArgs e) => SetPage("Instances", "Local launcher profiles stored in your Windows user profile.", $"{ReadInstances().Count} instance(s) found.");
-    private void Settings_Click(object sender, RoutedEventArgs e) => SetPage("Settings", "Native migration build", $"Data folder: {_root}. More settings are being ported from the previous app.");
+    private void Modpacks_Click(object sender, RoutedEventArgs e) => SetPage("Modpacks", "Discover projects from Modrinth.", "Search the Modrinth catalog below. Installing full modpacks is not yet ported.", "modpacks");
+    private void Mods_Click(object sender, RoutedEventArgs e) => SetPage("Mods", "Manage mods for your local Minecraft setup.", "Full instance-aware mod management is still being ported.", "mods");
+    private void Servers_Click(object sender, RoutedEventArgs e) => SetPage("Servers", "Keep your multiplayer addresses handy.", "Server shortcuts are saved locally on this PC.", "servers");
+    private void Settings_Click(object sender, RoutedEventArgs e) => SetPage("Settings", "Moon Launcher preferences.", $"Data folder: {_root}", "settings");
 
     private async void LoadVersions_Click(object sender, RoutedEventArgs e)
     {
@@ -40,17 +59,37 @@ public partial class MainWindow : Window
             StatusText.Text = "Downloading the official Minecraft version manifest…";
             var json = await Http.GetStringAsync("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json");
             using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-            _versions = root.GetProperty("versions").EnumerateArray().Select(v => new VersionEntry(
+            _versions = doc.RootElement.GetProperty("versions").EnumerateArray().Select(v => new VersionEntry(
                 v.GetProperty("id").GetString() ?? "",
                 v.GetProperty("type").GetString() ?? "",
                 v.GetProperty("releaseTime").GetString() ?? "")).ToList();
             VersionCount.Text = $"{_versions.Count:N0} versions";
             VersionsList.ItemsSource = _versions.Select(v => $"{v.Id}   •   {v.Type}   •   {v.ReleaseTime[..Math.Min(10, v.ReleaseTime.Length)]}").ToList();
-            VersionsList.Visibility = Visibility.Visible;
-            StatusText.Text = "Catalog loaded. This migration build does not yet install or launch the game.";
+            ShowPanel("versions");
+            StatusText.Text = "Catalog loaded. Native game installation and launching are still being ported.";
         }
         catch (Exception ex) { StatusText.Text = "Could not load Minecraft versions: " + ex.Message; }
+    }
+
+    private async void SearchModpacks_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var query = Uri.EscapeDataString(ModpackQuery.Text.Trim());
+            StatusText.Text = "Searching Modrinth…";
+            ModpackResults.ItemsSource = null;
+            using var response = await Http.GetAsync($"https://api.modrinth.com/v2/search?query={query}&facets=%5B%5B%22project_type%3Amodpack%22%5D%5D&limit=30");
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var items = doc.RootElement.GetProperty("hits").EnumerateArray().Select(p => new ModpackResult(
+                p.TryGetProperty("title", out var title) ? title.GetString() ?? "Untitled pack" : "Untitled pack",
+                p.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
+                $"{(p.TryGetProperty("downloads", out var downloads) ? downloads.GetInt64().ToString("N0") : "0")} downloads  •  { (p.TryGetProperty("slug", out var slug) ? slug.GetString() : "")}",
+                p.TryGetProperty("slug", out var slug2) ? slug2.GetString() ?? "" : "")).ToList();
+            ModpackResults.ItemsSource = items;
+            StatusText.Text = $"Found {items.Count} Modrinth modpack(s). Select a result and press Enter to open its project page.";
+        }
+        catch (Exception ex) { StatusText.Text = "Modrinth search failed: " + ex.Message; }
     }
 
     private void CreateInstance_Click(object sender, RoutedEventArgs e)
@@ -62,7 +101,37 @@ public partial class MainWindow : Window
         instances.Add(new InstanceEntry(Guid.NewGuid().ToString("N"), name.Trim(), version, DateTimeOffset.UtcNow));
         File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
         RefreshInstances();
-        StatusText.Text = $"Created instance “{name.Trim()}”. Game installation and launch are not implemented in this first native migration build.";
+        StatusText.Text = $"Created local profile “{name.Trim()}”. Game installation and launch are not yet implemented.";
+    }
+
+    private void AddServer_Click(object sender, RoutedEventArgs e)
+    {
+        var name = ServerName.Text.Trim();
+        var address = ServerAddress.Text.Trim();
+        if (name.Length == 0 || address.Length == 0 || address.Any(char.IsWhiteSpace) || address.Contains("://"))
+        {
+            StatusText.Text = "Enter a server name and a hostname or hostname:port (no URL scheme or spaces).";
+            return;
+        }
+        var servers = ReadServers();
+        servers.Add(new ServerEntry(Guid.NewGuid().ToString("N"), name, address));
+        SaveServers(servers);
+        ServerName.Clear(); ServerAddress.Clear(); RefreshServers();
+        StatusText.Text = $"Saved server “{name}”.";
+    }
+
+    private void RefreshServers() => ServerList.ItemsSource = ReadServers().Select(s => $"{s.Name}    —    {s.Address}").ToList();
+    private List<ServerEntry> ReadServers()
+    {
+        try { return JsonSerializer.Deserialize<List<ServerEntry>>(File.ReadAllText(_serversPath)) ?? new(); }
+        catch { return new(); }
+    }
+    private void SaveServers(List<ServerEntry> servers) => File.WriteAllText(_serversPath, JsonSerializer.Serialize(servers, new JsonSerializerOptions { WriteIndented = true }));
+
+    private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try { Directory.CreateDirectory(_root); Process.Start(new ProcessStartInfo { FileName = _root, UseShellExecute = true }); }
+        catch (Exception ex) { StatusText.Text = "Could not open data folder: " + ex.Message; }
     }
 
     private List<InstanceEntry> ReadInstances()
@@ -74,4 +143,6 @@ public partial class MainWindow : Window
 
     private sealed record VersionEntry(string Id, string Type, string ReleaseTime);
     private sealed record InstanceEntry(string Id, string Name, string Version, DateTimeOffset CreatedAt);
+    private sealed record ServerEntry(string Id, string Name, string Address);
+    private sealed record ModpackResult(string Title, string Description, string Footer, string Slug);
 }
