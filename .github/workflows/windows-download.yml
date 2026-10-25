@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    name: Build Windows installer
+    name: Build direct Windows setup download
     runs-on: windows-latest
     steps:
       - name: Check out Moon Launcher
@@ -33,13 +33,29 @@ jobs:
       - name: Install app dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Package installer
+      - name: Build Windows installer
         run: npm run dist:win
 
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
+      - name: Give setup a stable download filename
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path "dist" -Filter "Moon-Launcher-Setup-*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Windows setup .exe was not produced." }
+          Copy-Item $installer.FullName "dist/Moon-Launcher-Setup.exe" -Force
+
+      - name: Publish direct setup download
+        uses: softprops/action-gh-release@v2
         with:
-          name: Moon-Launcher-Windows-x64
-          path: dist/*.exe
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: latest
+          target_commitish: main
+          name: Moon Launcher — Latest Windows Setup
+          body: |
+            Direct Windows installer for the latest Moon Launcher build.
+
+            Download **Moon-Launcher-Setup.exe** and run it. No ZIP extraction is needed.
+          files: dist/Moon-Launcher-Setup.exe
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
