@@ -14,7 +14,8 @@ contextBridge.exposeInMainWorld("moonLauncher", Object.freeze({
   createInstance: (input) => ipcRenderer.invoke("instances:create", input),
   importModpack: () => ipcRenderer.invoke("modpacks:import"),
   searchModpacks: (options) => ipcRenderer.invoke("modpacks:search", options),
-  installModrinthPack: (project) => ipcRenderer.invoke("modpacks:install", project),
+  getModrinthPackVersions: (project) => ipcRenderer.invoke("modpacks:versions", project),
+  installModrinthPack: (project, versionId) => ipcRenderer.invoke("modpacks:install", project, versionId),
   onModpackProgress: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, progress) => callback(progress);
