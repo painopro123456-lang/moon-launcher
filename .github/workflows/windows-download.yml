@@ -68,3 +68,17 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show direct EXE download on workflow page
+        if: success()
+        shell: pwsh
+        run: |
+          @"
+          ## Moon Launcher Windows installer
+
+          **Direct EXE download (no ZIP extraction):**
+
+          [Download Moon-Launcher-Setup.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe)
+
+          GitHub wraps workflow artifacts in ZIP files automatically. Use the direct EXE link above to download the installer itself.
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
