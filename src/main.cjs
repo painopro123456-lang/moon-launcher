@@ -603,37 +603,57 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
   }
 }
 
-async function installModrinthPack(project) {
+async function getModrinthPackVersions(project) {
+  const projectId = String(project?.id || project?.slug || "");
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(projectId)) throw new Error("This Modrinth project link is invalid.");
+  const versions = await fetchModrinthJson(MODRINTH_API + "/project/" + encodeURIComponent(projectId) + "/version?include_changelog=false");
+  if (!Array.isArray(versions)) throw new Error("Modrinth returned an invalid pack version list.");
+  return versions.slice().sort((left, right) => (Date.parse(right.date_published || "") || 0) - (Date.parse(left.date_published || "") || 0))
+    .map((version) => {
+      const file = (version.files || []).find((item) => item.primary && /\.mrpack$/i.test(item.filename || ""))
+        || (version.files || []).find((item) => /\.mrpack$/i.test(item.filename || ""));
+      if (!file) return null;
+      return {
+        id: String(version.id || ""),
+        name: String(version.name || version.version_number || "Unnamed version"),
+        versionNumber: String(version.version_number || version.name || ""),
+        gameVersions: Array.isArray(version.game_versions) ? version.game_versions : [],
+        loaders: Array.isArray(version.loaders) ? version.loaders : [],
+        type: String(version.version_type || "release"),
+        published: String(version.date_published || ""),
+        fileName: String(file.filename || "modpack.mrpack"),
+        size: Number(file.size) || 0
+      };
+    }).filter(Boolean);
+}
+
+async function installModrinthPack(project, requestedVersionId) {
   const projectId = String(project?.id || project?.slug || "");
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(projectId)) throw new Error("This Modrinth project link is invalid.");
 
-  reportModpackProgress(projectId, "Finding the latest pack…", 0, 0);
-  const versionsUrl = MODRINTH_API + "/project/" + encodeURIComponent(projectId) + "/version?include_changelog=false";
-  const versions = await fetchModrinthJson(versionsUrl);
+  reportModpackProgress(projectId, "Finding modpack versions…", 0, 0);
+  const versions = await fetchModrinthJson(MODRINTH_API + "/project/" + encodeURIComponent(projectId) + "/version?include_changelog=false");
   if (!Array.isArray(versions)) throw new Error("Modrinth returned an invalid pack version list.");
-
-  const orderedVersions = versions.slice().sort((left, right) => {
-    const leftDate = Date.parse(left.date_published || "") || 0;
-    const rightDate = Date.parse(right.date_published || "") || 0;
-    return rightDate - leftDate;
-  });
+  const orderedVersions = versions.slice().sort((left, right) => (Date.parse(right.date_published || "") || 0) - (Date.parse(left.date_published || "") || 0));
   const candidates = orderedVersions.map((version) => ({
     version,
     file: (version.files || []).find((item) => item.primary && /\.mrpack$/i.test(item.filename || ""))
       || (version.files || []).find((item) => /\.mrpack$/i.test(item.filename || ""))
   })).filter((item) => item.file);
+  const selected = requestedVersionId
+    ? candidates.find((item) => String(item.version.id) === String(requestedVersionId))
+    : candidates.find((item) => item.version.version_type === "release") || candidates[0];
+  if (!selected) throw new Error(requestedVersionId
+    ? "That modpack version is no longer available. Reopen the version picker and try again."
+    : "This Modrinth project does not have a downloadable .mrpack file.");
 
-  const selected = candidates.find((item) => item.version.version_type === "release") || candidates[0];
-  if (!selected) throw new Error("This Modrinth project does not have a downloadable .mrpack file.");
-
-  reportModpackProgress(projectId, "Downloading the modpack…", 0, 0);
+  reportModpackProgress(projectId, "Downloading " + (selected.version.name || selected.version.version_number || "modpack") + "…", 0, 0);
   if (Number(selected.file.size) > MAX_PACK_ARCHIVE_BYTES) throw new Error("This modpack archive is larger than Moon Launcher allows.");
   const archiveBytes = await downloadTrustedModrinthFile(selected.file.url, MAX_PACK_ARCHIVE_BYTES);
   if (selected.file.size && archiveBytes.length !== Number(selected.file.size)) {
     throw new Error("The downloaded modpack archive did not match its listed size.");
   }
   verifyModrinthHashes(archiveBytes, selected.file.hashes, "modpack archive");
-
   return installMrpackArchive(archiveBytes, {
     projectId,
     slug: project?.slug,
@@ -641,7 +661,6 @@ async function installModrinthPack(project) {
     packVersion: selected.version.version_number || selected.version.name || selected.version.id
   });
 }
-
 
 
 const MICROSOFT_AUTHORIZE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
