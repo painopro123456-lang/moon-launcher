@@ -301,7 +301,7 @@ function renderSearchResults(projects) {
     const install = document.createElement("button");
     install.className = "primary-button install-pack-button";
     install.textContent = "Install pack";
-    install.addEventListener("click", () => installModrinthPack(project, install));
+    install.addEventListener("click", () => chooseModrinthPackVersion(project, install));
 
     const link = document.createElement("button");
     link.className = "project-link";
@@ -353,7 +353,44 @@ function renderModpackPagination() {
   host.append(summary, controls);
 }
 
-async function installModrinthPack(project, button) {
+async function chooseModrinthPackVersion(project, sourceButton) {
+  if (state.activeInstall) { showToast("A modpack is already installing. Please wait for it to finish."); return; }
+  const dialog = document.createElement("dialog"); dialog.className = "dialog pack-version-dialog";
+  const header = document.createElement("div"); header.className = "dialog-header";
+  const heading = document.createElement("div"); const eyebrow = document.createElement("div"); eyebrow.className = "eyebrow"; eyebrow.textContent = "CHOOSE YOUR BUILD";
+  const title = document.createElement("h2"); title.textContent = project.title; heading.append(eyebrow, title);
+  const close = document.createElement("button"); close.type = "button"; close.className = "close-button"; close.setAttribute("aria-label", "Close"); close.textContent = "×"; close.addEventListener("click", () => dialog.close()); header.append(heading, close);
+  const intro = document.createElement("p"); intro.className = "auth-instructions"; intro.textContent = "Choose the modpack release you want. Each option shows its Minecraft version and mod loader.";
+  const status = document.createElement("p"); status.className = "pack-version-status"; status.textContent = "Loading available versions…";
+  const list = document.createElement("div"); list.className = "pack-version-list";
+  const actions = document.createElement("div"); actions.className = "dialog-actions";
+  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "secondary-button"; cancel.textContent = "Cancel"; cancel.addEventListener("click", () => dialog.close());
+  const install = document.createElement("button"); install.type = "button"; install.className = "primary-button"; install.textContent = "Install selected version"; install.disabled = true; actions.append(cancel, install);
+  dialog.append(header, intro, status, list, actions); document.body.append(dialog); dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
+  try {
+    const versions = await api.getModrinthPackVersions(project);
+    if (!dialog.isConnected || !dialog.open) return;
+    if (!versions.length) { status.textContent = "No downloadable modpack versions were found."; return; }
+    status.textContent = versions.length + " downloadable version" + (versions.length === 1 ? "" : "s") + " available";
+    const radios = [];
+    for (const version of versions) {
+      const label = document.createElement("label"); label.className = "pack-version-option";
+      const radio = document.createElement("input"); radio.type = "radio"; radio.name = "pack-version"; radio.value = version.id; radio.checked = radios.length === 0;
+      const copy = document.createElement("span"); copy.className = "pack-version-copy";
+      const name = document.createElement("strong"); name.textContent = version.name;
+      const details = document.createElement("span"); details.textContent = (version.gameVersions.length ? version.gameVersions.join(", ") : "Minecraft version not listed") + " · " + (version.loaders.length ? version.loaders.join(" · ") : "Loader not listed");
+      const meta = document.createElement("span"); meta.className = "pack-version-meta";
+      const type = document.createElement("span"); type.className = "pack-version-type" + (version.type === "release" ? " is-release" : ""); type.textContent = version.type;
+      const file = document.createElement("span"); file.textContent = version.size ? (version.size / 1024 / 1024).toFixed(1) + " MB" : version.fileName;
+      meta.append(type, file); copy.append(name, details, meta); label.append(radio, copy);
+      label.addEventListener("click", () => radios.forEach((item) => item.label.classList.toggle("selected", item.radio.checked)));
+      if (radio.checked) label.classList.add("selected"); radios.push({ radio, label }); list.append(label);
+    }
+    install.disabled = false;
+    install.addEventListener("click", async () => { const chosen = radios.find((item) => item.radio.checked)?.radio.value; if (!chosen) return; dialog.close(); await installModrinthPack(project, sourceButton, chosen); });
+  } catch (error) { status.textContent = error.message || "Could not load modpack versions."; }
+}
+async function installModrinthPack(project, button, versionId) {
   if (state.activeInstall) {
     showToast("A modpack is already installing. Please wait for it to finish.");
     return;
@@ -363,7 +400,7 @@ async function installModrinthPack(project, button) {
   button.disabled = true;
   button.textContent = "Starting…";
   try {
-    const instance = await api.installModrinthPack(project);
+    const instance = await api.installModrinthPack(project, versionId);
     state.instances.unshift(instance);
     renderInstances();
     button.textContent = "Installed";
