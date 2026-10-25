@@ -1,65 +1,10 @@
 {
   "name": "moon-launcher",
   "productName": "Moon Launcher",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
-  "description": "A Windows Minecraft launcher for managing versions, instances, and modpacks.",
-  "main": "src/main.cjs",
+  "description": "A native Windows Minecraft launcher built with WPF.",
   "scripts": {
-    "start": "electron .",
-    "dist:win": "electron-builder --win nsis --x64 --publish never",
-    "release:win": "electron-builder --win nsis --x64 --publish always",
-    "build:icon": "node scripts/build-icon.cjs",
-    "pre-dist:win": "npm run build:icon",
-    "pre-release:win": "npm run build:icon"
-  },
-  "engines": {
-    "node": ">=22.16.0"
-  },
-  "dependencies": {
-    "adm-zip": "^0.5.16",
-    "electron-updater": "^6.6.2",
-    "minecraft-launcher-core": "3.18.2"
-  },
-  "devDependencies": {
-    "electron": "45.0.0",
-    "electron-builder": "26.18.0",
-    "sharp": "^0.34.5",
-    "png-to-ico": "^2.0.0"
-  },
-  "build": {
-    "appId": "dev.moon.launcher",
-    "productName": "Moon Launcher",
-    "compression": "maximum",
-    "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "Moon-Launcher-Setup-${version}-${arch}.${ext}",
-      "icon": "assets/moon-icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Moon Launcher"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "painopro123456-lang",
-        "repo": "moon-launcher"
-      }
-    ]
+    "build:win": "dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist"
   }
 }
