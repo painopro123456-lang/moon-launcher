@@ -4,14 +4,11 @@ A Windows desktop launcher for Minecraft Java Edition with separate game profile
 
 ## Download for Windows
 
-Every update to the `main` branch builds a Windows 64-bit installer.
+**[Download Moon Launcher Setup (.exe)](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe)**
 
-1. Open the repository's **Actions** tab.
-2. Choose the latest successful **Windows download** run.
-3. Under **Artifacts**, download **Moon-Launcher-Windows-x64**.
-4. Unzip it, then open `Moon-Launcher-Setup-0.1.0-x64.exe`.
+This link downloads the Windows installer directly. Open the downloaded `Moon-Launcher-Setup.exe` to install Moon Launcher; there is no ZIP to extract. Each update to the `main` branch rebuilds and refreshes this direct-download installer.
 
-GitHub keeps preview builds for 14 days. The installer is unsigned, so Windows may show an unknown-publisher prompt.
+The installer is unsigned, so Windows may show an unknown-publisher prompt.
 
 ## Features
 
