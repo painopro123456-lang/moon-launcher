@@ -26,12 +26,12 @@ jobs:
       - name: Build self-contained native app
         run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
 
-      - name: Give executable a stable download filename
+      - name: Verify executable exists
         shell: pwsh
         run: |
-          $app = Get-ChildItem -Path "dist" -Filter "Moon-Launcher.exe" | Select-Object -First 1
-          if (-not $app) { throw "Native Moon Launcher executable was not produced." }
-          Copy-Item $app.FullName "dist/Moon-Launcher.exe" -Force
+          $app = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
+          if (-not $app) { throw "Native Moon Launcher executable was not produced at dist/Moon-Launcher.exe." }
+          Write-Host "Built $($app.FullName) ($($app.Length) bytes)"
 
       - name: Upload direct Windows executable
         uses: actions/upload-artifact@v4
