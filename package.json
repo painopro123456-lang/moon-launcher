@@ -8,7 +8,10 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --x64 --publish never",
-    "release:win": "electron-builder --win nsis --x64 --publish always"
+    "release:win": "electron-builder --win nsis --x64 --publish always",
+    "build:icon": "node scripts/build-icon.cjs",
+    "pre-dist:win": "npm run build:icon",
+    "pre-release:win": "npm run build:icon"
   },
   "engines": {
     "node": ">=22.16.0"
@@ -20,7 +23,9 @@
   },
   "devDependencies": {
     "electron": "45.0.0",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "sharp": "^0.34.5",
+    "png-to-ico": "^2.0.0"
   },
   "build": {
     "appId": "dev.moon.launcher",
@@ -38,7 +43,8 @@
           ]
         }
       ],
-      "artifactName": "Moon-Launcher-Setup-${version}-${arch}.${ext}"
+      "artifactName": "Moon-Launcher-Setup-${version}-${arch}.${ext}",
+      "icon": "assets/moon-icon.ico"
     },
     "nsis": {
       "oneClick": false,
