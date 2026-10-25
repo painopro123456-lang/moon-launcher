@@ -45,7 +45,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Moon Launcher"
+      "shortcutName": "Moon Launcher",
+      "compression": "maximum"
     },
     "publish": [
       {
