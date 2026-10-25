@@ -1347,3 +1347,28 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+
+.pack-version-dialog { width: min(620px, calc(100vw - 48px)); max-width: 620px; max-height: min(760px, calc(100vh - 48px)); padding: 25px; overflow: auto; }
+.pack-version-dialog .dialog-header { margin-bottom: 12px; }
+.pack-version-dialog .dialog-header h2 { margin: 7px 0 0; font-size: 23px; overflow-wrap: anywhere; }
+.pack-version-dialog .auth-instructions { margin: 12px 0 16px; color: #aab0c8; font-size: 12px; line-height: 1.7; }
+.pack-version-status { margin: 0 0 12px; color: #b8b2d2; font-size: 11px; }
+.pack-version-list { display: grid; gap: 9px; max-height: 390px; overflow: auto; padding: 2px 4px 2px 1px; scrollbar-color: rgba(167,153,219,.28) transparent; scrollbar-width: thin; }
+.pack-version-option { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border: 1px solid rgba(192,190,255,.12); border-radius: 13px; background: linear-gradient(145deg,rgba(26,28,44,.8),rgba(15,17,29,.9)); cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.pack-version-option:hover { border-color: rgba(185,161,255,.34); transform: translateY(-1px); }
+.pack-version-option.selected { border-color: rgba(185,161,255,.52); background: linear-gradient(110deg,rgba(147,115,255,.16),rgba(118,139,255,.07)); box-shadow: inset 2px 0 #b9a2ff; }
+.pack-version-option input { flex: 0 0 auto; margin: 4px 0 0; accent-color: #a98cff; }
+.pack-version-copy { min-width: 0; flex: 1; display: grid; gap: 5px; }
+.pack-version-copy > strong { color: #f1efff; font-size: 12px; overflow-wrap: anywhere; }
+.pack-version-copy > span:not(.pack-version-meta) { color: #aab0c8; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+.pack-version-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; color: #858ca8; font-size: 9px; }
+.pack-version-type { padding: 3px 7px; border: 1px solid rgba(192,190,255,.12); border-radius: 99px; background: rgba(255,255,255,.035); text-transform: capitalize; }
+.pack-version-type.is-release { color: #9debd0; border-color: rgba(128,227,192,.14); background: rgba(82,190,134,.08); }
+.pack-version-dialog .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.pack-version-dialog .dialog-actions button { min-height: 39px; }
+@media (max-width: 560px) {
+  .pack-version-dialog { padding: 18px; }
+  .pack-version-dialog .dialog-actions { flex-direction: column-reverse; }
+  .pack-version-dialog .dialog-actions button { width: 100%; }
+}
