@@ -93,6 +93,41 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = "Modrinth search failed: " + ex.Message; }
     }
 
+
+    private void OpenSelectedModpack_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (ModpackResults.SelectedItem is not ModpackResult selected || string.IsNullOrWhiteSpace(selected.Slug)) return;
+        try { Process.Start(new ProcessStartInfo { FileName = $"https://modrinth.com/modpack/{Uri.EscapeDataString(selected.Slug)}", UseShellExecute = true }); }
+        catch (Exception ex) { StatusText.Text = "Could not open Modrinth project: " + ex.Message; }
+    }
+
+    private void ImportModpack_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = "Import Modrinth modpack", Filter = "Modrinth modpack (*.mrpack)|*.mrpack", CheckFileExists = true };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var info = new FileInfo(dialog.FileName);
+            if (info.Length <= 0 || info.Length > 2L * 1024 * 1024 * 1024) throw new InvalidDataException("Pack file is empty or larger than 2 GB.");
+            using var archive = ZipFile.OpenRead(dialog.FileName);
+            var manifestEntry = archive.GetEntry("modrinth.index.json") ?? throw new InvalidDataException("This is not a valid Modrinth .mrpack (manifest missing).");
+            if (manifestEntry.Length > 5 * 1024 * 1024) throw new InvalidDataException("Modpack manifest is unexpectedly large.");
+            using var stream = manifestEntry.Open();
+            using var doc = JsonDocument.Parse(stream);
+            var root = doc.RootElement;
+            var name = root.TryGetProperty("name", out var n) ? n.GetString() : null;
+            var version = root.TryGetProperty("dependencies", out var deps) && deps.TryGetProperty("minecraft", out var mc) ? mc.GetString() : null;
+            name = string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(dialog.FileName) : name.Trim();
+            version = string.IsNullOrWhiteSpace(version) ? "unknown" : version;
+            var instances = ReadInstances();
+            instances.Add(new InstanceEntry(Guid.NewGuid().ToString("N"), name, version, DateTimeOffset.UtcNow));
+            File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
+            RefreshInstances();
+            StatusText.Text = $"Validated “{name}” (Minecraft {version}) and added a profile record. Files and dependencies have NOT been installed yet.";
+        }
+        catch (Exception ex) { StatusText.Text = "Could not import modpack: " + ex.Message; }
+    }
+
     private void CreateInstance_Click(object sender, RoutedEventArgs e)
     {
         var name = Microsoft.VisualBasic.Interaction.InputBox("Enter a name for the new instance:", "Create instance", "My Minecraft");
