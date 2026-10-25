@@ -1,41 +1,27 @@
 # Moon Launcher
 
-A Windows desktop launcher for Minecraft Java Edition with separate game profiles and modpacks.
+Moon Launcher is being migrated from Electron to a native Windows WPF application to remove the embedded Chromium runtime and reduce idle overhead.
 
-## Download for Windows
+## Native Windows build
 
-**[Download Moon Launcher Setup (.exe)](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe)**
+The GitHub Actions workflow builds a self-contained Windows x64 executable:
 
-This link downloads the Windows installer directly. Open the downloaded `Moon-Launcher-Setup.exe` to install Moon Launcher; there is no ZIP to extract. Each update to the `main` branch rebuilds and refreshes this direct-download installer.
+**[Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)**
 
-The installer is unsigned, so Windows may show an unknown-publisher prompt.
+This is a direct application executable, not an installer. The first native migration build contains the native UI, local instance records, and the official Minecraft version catalog.
 
-## Features
+## Migration status
 
-- Browse Minecraft versions and create separate vanilla instances.
-- Sign in with Microsoft in your default browser. After you finish, the browser returns to Moon Launcher automatically.
-- Install and launch vanilla Minecraft. Game files are shared where possible; each instance keeps its own saves, options, and mods folder.
-- Choose the Moon Launcher directory in Settings. Existing instance and game data is moved into the selected folder. Microsoft account tokens remain encrypted in Windows secure storage.
-- Choose memory, download connections, and whether Minecraft starts fullscreen.
-- Search Modrinth modpacks, download and checksum-verify their files, and import local `.mrpack` files.
+The native WPF rewrite is in progress. Features from the former Electron application are **not yet all ported**. In this initial native build, Minecraft installation and launching, Microsoft login, modpack import/download, and the previous settings are not implemented. Do not assume the old Electron feature set is available in the native build yet.
 
-## Microsoft sign-in
+## Build from source
 
-Moon Launcher includes its public Microsoft Application (client) ID, so users do not need to register an app or enter an ID in Settings. Each player signs in with their own personal Microsoft account in the default browser. The app uses a desktop public-client authorization flow and does not contain a client secret. Sign-in can only complete for an account that owns Minecraft: Java Edition.
+Install the .NET 8 SDK on Windows, then run:
 
-Sign-in can only complete for an account that owns Minecraft: Java Edition. Moon Launcher stores its refresh token encrypted with Windows secure storage.
-
-## Current limits
-
-Modrinth packs with Fabric, Forge, or another mod loader can be installed as files, but loader setup is not connected yet, so those packs cannot launch. CurseForge import reads pack metadata only; downloadable CurseForge content requires an approved integration.
-
-## Run from source
-
-Install Node.js 22.16 or newer, then run:
-
-```sh
-npm install
-npm start
+```powershell
+dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
 ```
+
+The output is `dist/Moon-Launcher.exe`.
 
 Moon Launcher is an independent project and is not affiliated with Mojang or Microsoft.
