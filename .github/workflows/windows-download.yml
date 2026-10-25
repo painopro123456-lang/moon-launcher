@@ -43,6 +43,15 @@ jobs:
           if (-not $installer) { throw "Windows setup .exe was not produced." }
           Copy-Item $installer.FullName "dist/Moon-Launcher-Setup.exe" -Force
 
+
+      - name: Upload Windows installer to workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moon-Launcher-Windows-Setup
+          path: dist/Moon-Launcher-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Publish direct setup download
         uses: softprops/action-gh-release@v2
         with:
