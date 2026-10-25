@@ -1,9 +1,8 @@
-name: Windows download
+name: Windows native download
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build direct Windows setup download
+    name: Build Electron-free native Windows app
     runs-on: windows-latest
     steps:
       - name: Check out Moon Launcher
@@ -19,50 +18,41 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: "22.16.0"
+          dotnet-version: "8.0.x"
 
-      - name: Check JavaScript syntax
-        run: |
-          node --check src/main.cjs
-          node --check src/preload.cjs
-          node --check src/renderer.js
+      - name: Build self-contained native app
+        run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
 
-      - name: Install app dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Build Windows installer
-        run: npm run dist:win
-
-      - name: Give setup a stable download filename
+      - name: Give executable a stable download filename
         shell: pwsh
         run: |
-          $installer = Get-ChildItem -Path "dist" -Filter "Moon-Launcher-Setup-*.exe" | Select-Object -First 1
-          if (-not $installer) { throw "Windows setup .exe was not produced." }
-          Copy-Item $installer.FullName "dist/Moon-Launcher-Setup.exe" -Force
+          $app = Get-ChildItem -Path "dist" -Filter "Moon-Launcher.exe" | Select-Object -First 1
+          if (-not $app) { throw "Native Moon Launcher executable was not produced." }
+          Copy-Item $app.FullName "dist/Moon-Launcher.exe" -Force
 
-
-      - name: Upload Windows installer to workflow artifacts
+      - name: Upload direct Windows executable
         uses: actions/upload-artifact@v4
         with:
-          name: Moon-Launcher-Windows-Setup
-          path: dist/Moon-Launcher-Setup.exe
+          name: Moon-Launcher-Native-Windows
+          path: dist/Moon-Launcher.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish direct setup download
+      - name: Publish direct executable download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           target_commitish: main
-          name: Moon Launcher — Latest Windows Setup
+          name: Moon Launcher — Native Windows Build
           body: |
-            Direct Windows installer for the latest Moon Launcher build.
+            Electron-free native WPF migration build for Windows x64.
 
-            Download **Moon-Launcher-Setup.exe** and run it. No ZIP extraction is needed.
-          files: dist/Moon-Launcher-Setup.exe
+            Download **Moon-Launcher.exe** and run it. This is a self-contained app executable, not an installer.
+            This initial migration build includes the native UI, local instance records, and official Minecraft version catalog. Game installation, launching, Microsoft login, modpacks, and the previous settings are not yet ported.
+          files: dist/Moon-Launcher.exe
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
@@ -74,11 +64,9 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ## Moon Launcher Windows installer
+          ## Moon Launcher — native Windows build
 
-          **Direct EXE download (no ZIP extraction):**
+          [Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)
 
-          [Download Moon-Launcher-Setup.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe)
-
-          GitHub wraps workflow artifacts in ZIP files automatically. Use the direct EXE link above to download the installer itself.
+          This is a self-contained native WPF executable; it is not an installer.
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
