@@ -30,6 +30,8 @@ public partial class MainWindow : Window
 
     private void ShowPanel(string panel)
     {
+        OverviewHero.Visibility = panel == "home" ? Visibility.Visible : Visibility.Collapsed;
+        OverviewStats.Visibility = panel == "home" ? Visibility.Visible : Visibility.Collapsed;
         ModpacksPanel.Visibility = panel == "modpacks" ? Visibility.Visible : Visibility.Collapsed;
         ServersPanel.Visibility = panel == "servers" ? Visibility.Visible : Visibility.Collapsed;
         ModsPanel.Visibility = panel == "mods" ? Visibility.Visible : Visibility.Collapsed;
