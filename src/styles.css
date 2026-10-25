@@ -930,3 +930,91 @@ input, select, .search-box {
   .hero-card { min-height: 250px; padding: 27px; }
   .hero-card::after { right: -120px; }
 }
+
+
+/* Final art direction: Moonlight glass, clearer hierarchy, and atmospheric depth. */
+:root {
+  --moon-lavender: #c9b8ff;
+  --moon-blue: #8bbdff;
+  --moon-surface: rgba(20, 23, 40, .82);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1px 1px at 13% 19%, rgba(231,222,255,.45) 50%, transparent 100%),
+    radial-gradient(1px 1px at 72% 14%, rgba(231,222,255,.35) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 88% 63%, rgba(173,197,255,.35) 50%, transparent 100%),
+    radial-gradient(1px 1px at 43% 78%, rgba(231,222,255,.25) 50%, transparent 100%),
+    radial-gradient(1px 1px at 24% 88%, rgba(231,222,255,.28) 50%, transparent 100%);
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: #211638;
+  text-shadow: 0 1px 0 rgba(255,255,255,.6);
+  border-radius: 13px;
+}
+.brand strong { letter-spacing: .19em; }
+.brand span { letter-spacing: .22em; }
+.sidebar-label, .eyebrow { color: #9992b7; }
+.nav-item { transition: color .2s ease, background .2s ease, border-color .2s ease, transform .2s ease; }
+.nav-item:not(.active):hover {
+  color: #eee8ff;
+  background: rgba(190,171,255,.055);
+  border-color: rgba(190,171,255,.09);
+}
+.topbar { position: relative; }
+.topbar::after {
+  content: "";
+  position: absolute;
+  bottom: -16px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(187,164,255,.17), rgba(187,164,255,.035) 70%, transparent);
+}
+.catalog-state { color: #b7b4cb; }
+.status-dot:not(.offline) { box-shadow: 0 0 12px rgba(104,231,177,.5); }
+.hero-card { overflow: hidden; }
+.hero-card .hero-copy { position: relative; z-index: 2; }
+.hero-card .moon-art { filter: drop-shadow(0 0 30px rgba(159,128,255,.13)); }
+.hero-card .moon-orb {
+  box-shadow: 0 0 55px rgba(159,128,255,.18), inset -18px -12px 30px rgba(88,67,157,.12), inset 5px 5px 24px rgba(255,255,255,.11);
+}
+.hero-card .star { color: #ded4ff; text-shadow: 0 0 18px rgba(203,184,255,.8); }
+.stats-grid { margin-top: 18px; }
+.stat-icon { display: grid; place-items: center; border-radius: 12px; }
+.stat-card strong { font-variant-numeric: tabular-nums; }
+.quick-versions-heading h2, .section-heading h2 { font-size: 19px; }
+.quick-version:focus-visible, .primary-button:focus-visible, .secondary-button:focus-visible {
+  outline: 2px solid var(--moon-lavender);
+  outline-offset: 3px;
+}
+.instance-card, .modpack-card, .server-card {
+  position: relative;
+  overflow: hidden;
+}
+.instance-card::before, .modpack-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  opacity: 0;
+  background: linear-gradient(180deg, var(--moon-lavender), var(--moon-blue));
+  transition: opacity .2s ease;
+}
+.instance-card:hover::before, .modpack-card:hover::before { opacity: 1; }
+.dialog::backdrop { background: rgba(3,4,10,.72); backdrop-filter: blur(8px); }
+::selection { color: #fff; background: rgba(140,111,255,.42); }
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark { animation: moon-mark-arrive .65s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes moon-mark-arrive {
+    from { opacity: .55; transform: translateY(4px) rotate(-12deg); }
+    to { opacity: 1; transform: translateY(0) rotate(0); }
+  }
+}
