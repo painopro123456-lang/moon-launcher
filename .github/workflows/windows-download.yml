@@ -56,6 +56,6 @@ jobs:
           files: dist/Moon-Launcher-Setup.exe
           overwrite_files: true
           fail_on_unmatched_files: true
-          make_latest: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
