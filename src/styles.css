@@ -1372,3 +1372,205 @@ body {
   .pack-version-dialog .dialog-actions { flex-direction: column-reverse; }
   .pack-version-dialog .dialog-actions button { width: 100%; }
 }
+
+
+/* Moon Launcher — deep ocean blue theme */
+:root {
+  --bg: #050d1b;
+  --panel: rgba(10, 23, 43, .9);
+  --panel-soft: rgba(14, 34, 61, .82);
+  --border: rgba(91, 170, 255, .19);
+  --text: #f2f8ff;
+  --muted: #b0c6e2;
+  --quiet: #7894b8;
+  --purple: #62b7ff;
+  --purple-strong: #238bfa;
+  --blue: #62c6ff;
+  --moon-lavender: #76c7ff;
+  --moon-blue: #3e9dff;
+  --moon-surface: rgba(9, 24, 45, .88);
+  --moon-line: rgba(89, 174, 255, .22);
+}
+html { background: #050d1b; }
+body {
+  background:
+    radial-gradient(ellipse at 82% 4%, rgba(22, 112, 218, .25), transparent 34rem),
+    radial-gradient(ellipse at 28% 100%, rgba(0, 177, 255, .13), transparent 35rem),
+    linear-gradient(145deg, #050b17, #07152a 52%, #050d1b);
+}
+.app-shell {
+  border-color: rgba(93, 176, 255, .2);
+  background: linear-gradient(145deg, rgba(7, 18, 35, .98), rgba(5, 12, 25, .98));
+}
+.app-shell::before {
+  background-image: radial-gradient(rgba(156, 210, 255, .3) .65px, transparent .65px);
+}
+.sidebar {
+  background: linear-gradient(180deg, rgba(8, 25, 47, .99), rgba(5, 15, 30, .99));
+  border-right-color: rgba(77, 163, 255, .18);
+}
+.brand-mark {
+  color: #041225;
+  background: linear-gradient(145deg, #e0f5ff 0%, #73c7ff 44%, #1679ed 100%);
+  box-shadow: 0 0 0 5px rgba(47, 148, 255, .08), 0 9px 28px rgba(25, 129, 255, .32);
+}
+.brand span { color: #7e9fc5; }
+.sidebar-label, .eyebrow { color: #7fa5d1; }
+.nav-item { color: #a6c1df; }
+.nav-item:not(.active):hover {
+  color: #eef8ff;
+  background: rgba(91, 174, 255, .09);
+  border-color: rgba(91, 174, 255, .12);
+}
+.nav-item.active {
+  border-color: rgba(76, 166, 255, .28);
+  background: linear-gradient(100deg, rgba(28, 135, 255, .23), rgba(34, 194, 255, .07));
+  color: #e3f4ff;
+  box-shadow: inset 2px 0 #54baff, 0 7px 24px rgba(18, 95, 190, .18);
+}
+.nav-item.active::after {
+  background: #72d0ff;
+  box-shadow: 0 0 12px rgba(82, 190, 255, .9);
+}
+.nav-icon, .nav-item.active .nav-icon { color: #81c7ff; }
+.account-card {
+  border-color: rgba(80, 165, 255, .2);
+  background: linear-gradient(135deg, rgba(28, 126, 220, .13), rgba(255,255,255,.018));
+}
+.avatar {
+  border-color: rgba(99, 185, 255, .28);
+  background: linear-gradient(145deg, #123c69, #10213d);
+  color: #83ceff;
+}
+.topbar::after {
+  background: linear-gradient(90deg, rgba(77, 176, 255, .24), rgba(77, 176, 255, .035) 70%, transparent);
+}
+.catalog-state { border-color: rgba(96, 177, 255, .18); }
+.hero-card {
+  border-color: rgba(71, 164, 255, .3);
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(22, 119, 229, .29), transparent 42%),
+    radial-gradient(ellipse at 100% 100%, rgba(0, 196, 255, .17), transparent 44%),
+    linear-gradient(118deg, #0c1c34 0%, #0c2340 46%, #07182d 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 22px 58px rgba(0,0,0,.22);
+}
+.hero-card::before {
+  background: linear-gradient(115deg, rgba(255,255,255,.045), transparent 42%, rgba(65, 170, 255, .06));
+}
+.hero-card::after {
+  border-color: rgba(106, 194, 255, .12);
+  box-shadow: 0 0 0 22px rgba(87,177,255,.025), 0 0 0 48px rgba(87,177,255,.016);
+}
+.hero-card .pill, .pill {
+  border-color: rgba(89, 185, 255, .3);
+  background: rgba(34, 151, 255, .13);
+  color: #c7eaff;
+}
+.hero-card h2 span {
+  background: linear-gradient(100deg, #e1f5ff 0%, #80ceff 47%, #48a4ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-card p { color: #b6cce5; }
+.primary-button, .launch-button, .install-pack-button {
+  border-color: rgba(190, 232, 255, .46);
+  background: linear-gradient(115deg, #bdeaff 0%, #63c4ff 48%, #2685ff 100%);
+  color: #041426;
+  box-shadow: 0 8px 24px rgba(25, 139, 255, .25), inset 0 1px rgba(255,255,255,.62);
+}
+.primary-button:hover, .launch-button:not(:disabled):hover, .install-pack-button:not(:disabled):hover {
+  box-shadow: 0 12px 30px rgba(25, 139, 255, .36), inset 0 1px rgba(255,255,255,.7);
+}
+.secondary-button {
+  border-color: rgba(105, 180, 255, .2);
+  background: linear-gradient(145deg, rgba(255,255,255,.065), rgba(45, 125, 210, .05));
+  color: #dcefff;
+}
+.secondary-button:hover { border-color: rgba(83, 180, 255, .4); background: rgba(38, 142, 255, .11); }
+.moon-orb {
+  background:
+    radial-gradient(circle at 31% 28%, rgba(255,255,255,.95), transparent 7%),
+    radial-gradient(circle at 36% 34%, #e2f7ff 0%, #9bdcff 17%, #459cff 45%, #1c579c 73%, #102a50 100%);
+  box-shadow: 0 0 65px rgba(40, 155, 255, .32), inset -22px -20px 38px rgba(4, 17, 38, .6), inset 8px 8px 30px rgba(255,255,255,.12);
+}
+.moon-orb:after { background: #0c1c34; }
+.hero-glow { background: rgba(0, 146, 255, .2); }
+.stat-card, .instance-card, .modpack-card, .server-card, .mod-row, .empty-card, .notice-card {
+  border-color: rgba(86, 164, 255, .17);
+  background: linear-gradient(145deg, rgba(12, 31, 55, .94), rgba(7, 18, 35, .94));
+}
+.stat-card:hover, .instance-card:hover, .modpack-card:hover, .server-card:hover {
+  border-color: rgba(76, 177, 255, .38);
+}
+.stat-icon, .stat-icon.blue, .stat-icon.lilac {
+  border-color: rgba(87, 177, 255, .2);
+  background: linear-gradient(145deg, rgba(35, 150, 255, .2), rgba(35, 150, 255, .06));
+  color: #80d1ff;
+}
+.quick-version {
+  border-color: rgba(81, 164, 255, .18);
+  background: linear-gradient(145deg, rgba(13, 35, 62, .92), rgba(7, 19, 37, .94));
+}
+.quick-version:hover {
+  border-color: rgba(70, 182, 255, .44);
+  background: linear-gradient(145deg, rgba(16, 57, 96, .88), rgba(8, 29, 54, .96));
+}
+.quick-version-dot { background: #56baff; box-shadow: 0 0 12px rgba(86,186,255,.8); }
+.quick-version-tag, .text-button, .modpack-card button, .modpack-card .project-link { color: #79caff; }
+.quick-version-tag.pvp-tag { color: #91e3ff; }
+.instance-icon, .pack-placeholder {
+  background: linear-gradient(135deg, rgba(38, 158, 255, .25), rgba(42, 203, 255, .1));
+  color: #a5e2ff;
+}
+.instance-badge, .coming-pill { background: rgba(77, 162, 255, .1); color: #a9d8ff; }
+.notice-card {
+  background: linear-gradient(110deg, rgba(16, 111, 209, .15), rgba(0, 167, 224, .1));
+}
+.notice-icon { background: rgba(39, 154, 255, .14); color: #7acaff; }
+.search-box, .setting-input, .field-label input {
+  border-color: rgba(80, 166, 255, .2);
+  background: rgba(5, 17, 33, .84);
+}
+.search-box:focus-within, .setting-input:focus, .field-label input:focus {
+  border-color: rgba(74, 176, 255, .58);
+  box-shadow: 0 0 0 3px rgba(48, 151, 255, .1);
+}
+.field-label select, .setting-select select {
+  border-color: rgba(80, 166, 255, .24);
+  background: linear-gradient(145deg, #102947, #08192d);
+}
+.field-label select:hover:not(:disabled) { border-color: rgba(82, 184, 255, .55); }
+.field-label select:focus-visible { border-color: #61c4ff; box-shadow: 0 0 0 3px rgba(64, 164, 255, .2); }
+.field-label select option, .field-label select optgroup { background: #0b2038; color: #eff8ff; }
+.select-caret { border-color: #a2dfff; }
+.dialog {
+  border-color: rgba(76, 172, 255, .28);
+  background: linear-gradient(145deg, #10243e, #071426 75%);
+}
+.dialog::backdrop { background: rgba(2, 7, 16, .76); }
+.toast {
+  border-color: rgba(76, 172, 255, .3);
+  background: linear-gradient(145deg, #123052, #091a30);
+  color: #e2f5ff;
+}
+.pack-version-dialog .auth-instructions { color: #a9c4e0; }
+.pack-version-status { color: #b0d3f0; }
+.pack-version-list { scrollbar-color: rgba(73, 161, 255, .35) transparent; }
+.pack-version-option {
+  border-color: rgba(86, 170, 255, .18);
+  background: linear-gradient(145deg, rgba(12, 37, 66, .88), rgba(6, 20, 39, .94));
+}
+.pack-version-option:hover { border-color: rgba(73, 180, 255, .44); }
+.pack-version-option.selected {
+  border-color: rgba(79, 180, 255, .58);
+  background: linear-gradient(110deg, rgba(24, 134, 245, .2), rgba(0, 185, 255, .08));
+  box-shadow: inset 2px 0 #63c5ff;
+}
+.pack-version-option input { accent-color: #38aaff; }
+.pack-version-copy > strong { color: #f0f9ff; }
+.pack-version-copy > span:not(.pack-version-meta) { color: #b0cbe4; }
+.pack-version-type { border-color: rgba(86, 170, 255, .18); }
+.pack-version-dialog .dialog-actions button:focus-visible { outline-color: #73ceff; }
+::selection { color: #fff; background: rgba(37, 151, 255, .48); }
+:focus-visible { outline-color: #78ceff; }
