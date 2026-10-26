@@ -138,6 +138,8 @@ function renderAccount(status) {
     ? "This Microsoft account is ready for Minecraft."
     : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
   $("#sign-in-button").hidden = Boolean(status?.signedIn);
+  $("#topbar-sign-in").hidden = Boolean(status?.signedIn);
+  $("#topbar-sign-in").textContent = status?.signedIn ? "Signed in" : "Sign in";
   $("#sign-out-button").hidden = !status?.signedIn;
   loadSavedAccounts();
 }
