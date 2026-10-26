@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Electron-free native Windows app
+    name: Build Moon Launcher and Windows installer
     runs-on: windows-latest
     steps:
       - name: Check out Moon Launcher
@@ -33,40 +33,58 @@ jobs:
           if (-not $app) { throw "Native Moon Launcher executable was not produced at dist/Moon-Launcher.exe." }
           Write-Host "Built $($app.FullName) ($($app.Length) bytes)"
 
-      - name: Upload direct Windows executable
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler not found at $compiler" }
+          & $compiler "installer/MoonLauncher.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path "dist/Moon-Launcher-Setup.exe")) { throw "Installer output was not produced." }
+
+      - name: Upload Windows downloads
         uses: actions/upload-artifact@v4
         with:
-          name: Moon-Launcher-Native-Windows
-          path: dist/Moon-Launcher.exe
+          name: Moon-Launcher-Windows
+          path: |
+            dist/Moon-Launcher.exe
+            dist/Moon-Launcher-Setup.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish direct executable download
+      - name: Publish Windows downloads
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           target_commitish: main
           name: Moon Launcher — Native Windows Build
           body: |
-            Electron-free native WPF migration build for Windows x64.
+            Native WPF build for Windows x64.
 
-            Download **Moon-Launcher.exe** and run it. This is a self-contained app executable, not an installer.
-            This initial migration build includes the native UI, local instance records, and official Minecraft version catalog. Game installation, launching, Microsoft login, modpacks, and the previous settings are not yet ported.
-          files: dist/Moon-Launcher.exe
+            **Recommended:** Download and run **Moon-Launcher-Setup.exe** for a normal Windows installation. It adds Moon Launcher to Windows Apps/Installed apps and creates an uninstaller, Start Menu shortcut, and optional desktop shortcut.
+
+            **Portable option:** Download **Moon-Launcher.exe** to run without installing. A portable executable does not have an uninstall entry; close it and delete the file to remove it.
+
+            Uninstalling removes the installed application and shortcuts. It does not automatically delete user data.
+          files: |
+            dist/Moon-Launcher.exe
+            dist/Moon-Launcher-Setup.exe
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Show direct EXE download on workflow page
+      - name: Show downloads on workflow page
         if: success()
         shell: pwsh
         run: |
           @"
-          ## Moon Launcher — native Windows build
+          ## Moon Launcher — Windows downloads
 
-          [Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)
-
-          This is a self-contained native WPF executable; it is not an installer.
+          - [Recommended: Moon-Launcher-Setup.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe) — installs normally and includes an uninstaller.
+          - [Portable Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe) — run directly; close and delete the file to remove it.
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
