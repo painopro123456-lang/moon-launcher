@@ -17,6 +17,9 @@ public partial class MainWindow : Window
     private readonly string _serversPath;
     private List<VersionEntry> _versions = new();
     private readonly MicrosoftAuthService _microsoftAuth = new();
+    private string? _modsFolder;
+    private List<ModResult> _foundMods = new();
+    private ModResult? _selectedMod;
 
     private void WindowChrome_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -209,6 +212,74 @@ public partial class MainWindow : Window
     }
     private void SaveServers(List<ServerEntry> servers) => File.WriteAllText(_serversPath, JsonSerializer.Serialize(servers, new JsonSerializerOptions { WriteIndented = true }));
 
+    private void ChooseModsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Choose Minecraft mods folder", Multiselect = false };
+        if (dialog.ShowDialog(this) != true) return;
+        _modsFolder = dialog.FolderName;
+        ModsFolderText.Text = _modsFolder;
+        ModInstallStatus.Text = "Target folder selected.";
+    }
+
+    private async void SearchMods_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var query = Uri.EscapeDataString(ModQuery.Text.Trim());
+            var versionText = ModGameVersion.Text.Trim();
+            var loader = (ModLoaderChoice.SelectedItem as ComboBoxItem)?.Content?.ToString()?.ToLowerInvariant() ?? "fabric";
+            if (query.Length == 0) { ModInstallStatus.Text = "Enter a mod name."; return; }
+            ModInstallStatus.Text = "Searching Modrinth…";
+            var facets = Uri.EscapeDataString(JsonSerializer.Serialize(new[] { new[] { "project_type:mod" } }));
+            using var response = await Http.GetAsync($"https://api.modrinth.com/v2/search?query={query}&facets={facets}&limit=30");
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            _foundMods = doc.RootElement.GetProperty("hits").EnumerateArray().Select(p => new ModResult(
+                p.TryGetProperty("title", out var title) ? title.GetString() ?? "Untitled mod" : "Untitled mod",
+                p.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
+                $"{(p.TryGetProperty("downloads", out var downloads) ? downloads.GetInt64().ToString("N0") : "0")} downloads • {loader} • Minecraft {versionText}",
+                p.TryGetProperty("project_id", out var id) ? id.GetString() ?? "" : "")).ToList();
+            ModResults.ItemsSource = _foundMods;
+            ModInstallStatus.Text = $"Found {_foundMods.Count} mods. Select one and install it.";
+        }
+        catch (Exception ex) { ModInstallStatus.Text = "Search failed: " + ex.Message; }
+    }
+
+    private void ModResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _selectedMod = ModResults.SelectedItem as ModResult;
+        if (_selectedMod is not null) ModInstallStatus.Text = "Selected " + _selectedMod.Title + ".";
+    }
+
+    private async void InstallSelectedMod_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedMod is null) { ModInstallStatus.Text = "Select a mod first."; return; }
+        if (string.IsNullOrWhiteSpace(_modsFolder) || !Directory.Exists(_modsFolder)) { ModInstallStatus.Text = "Choose an existing mods folder first."; return; }
+        try
+        {
+            var version = Uri.EscapeDataString(ModGameVersion.Text.Trim());
+            var loader = (ModLoaderChoice.SelectedItem as ComboBoxItem)?.Content?.ToString()?.ToLowerInvariant() ?? "fabric";
+            ModInstallStatus.Text = "Finding compatible release…";
+            var url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(_selectedMod.ProjectId)}/version?game_versions=%5B%22{version}%22%5D&loaders=%5B%22{loader}%22%5D";
+            using var response = await Http.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var file = doc.RootElement.EnumerateArray().SelectMany(v => v.GetProperty("files").EnumerateArray()).FirstOrDefault(f => f.TryGetProperty("primary", out var primary) && primary.GetBoolean());
+            if (file.ValueKind == JsonValueKind.Undefined) throw new InvalidOperationException("No compatible release found for this Minecraft version and loader.");
+            var fileUrl = file.GetProperty("url").GetString() ?? throw new InvalidOperationException("No download URL returned.");
+            var filename = Path.GetFileName(new Uri(fileUrl).AbsolutePath);
+            if (!filename.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || filename.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new InvalidDataException("Invalid mod filename.");
+            var target = Path.Combine(_modsFolder, filename);
+            if (File.Exists(target)) throw new IOException("Already installed: " + filename);
+            ModInstallStatus.Text = "Downloading " + filename + "…";
+            var bytes = await Http.GetByteArrayAsync(fileUrl);
+            if (bytes.Length == 0 || bytes.Length > 250 * 1024 * 1024) throw new InvalidDataException("Downloaded file size is invalid.");
+            await File.WriteAllBytesAsync(target, bytes);
+            ModInstallStatus.Text = "Installed " + filename + ".";
+        }
+        catch (Exception ex) { ModInstallStatus.Text = "Install failed: " + ex.Message; }
+    }
+
     private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
     {
         try { Directory.CreateDirectory(_root); Process.Start(new ProcessStartInfo { FileName = _root, UseShellExecute = true }); }
@@ -226,4 +297,5 @@ public partial class MainWindow : Window
     private sealed record InstanceEntry(string Id, string Name, string Version, DateTimeOffset CreatedAt);
     private sealed record ServerEntry(string Id, string Name, string Address);
     private sealed record ModpackResult(string Title, string Description, string Footer, string Slug);
+    private sealed record ModResult(string Title, string Description, string Footer, string ProjectId);
 }
