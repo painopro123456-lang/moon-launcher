@@ -16,6 +16,7 @@ OutputBaseFilename=Moon-Launcher-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\native\moon-icon.ico
 ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
 UninstallDisplayName={#MyAppName}
