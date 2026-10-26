@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld("moonLauncher", Object.freeze({
   getAccountStatus: () => ipcRenderer.invoke("auth:status"),
   saveMicrosoftClientId: (clientId) => ipcRenderer.invoke("auth:save-client-id", clientId),
   signInMicrosoft: () => ipcRenderer.invoke("auth:sign-in"),
+  createOfflineAccount: (username) => ipcRenderer.invoke("auth:create-offline", username),
   cancelSignIn: () => ipcRenderer.invoke("auth:cancel"),
   signOutMicrosoft: () => ipcRenderer.invoke("auth:sign-out"),
   openMicrosoftVerification: (url) => ipcRenderer.invoke("auth:open-verification", url),
