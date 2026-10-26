@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Moon-Launcher</AssemblyName>
+    <ApplicationIcon>moon-icon.ico</ApplicationIcon>
     <RootNamespace>MoonLauncher</RootNamespace>
     <Version>0.2.0</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
