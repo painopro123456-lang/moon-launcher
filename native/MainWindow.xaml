@@ -1,5 +1,17 @@
-<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Height="840" Width="1360" MinHeight="700" MinWidth="1080" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
-  <Grid Margin="24">
+<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Height="840" Width="1360" MinHeight="700" MinWidth="1080" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize">
+  <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Grid.Row="0" Background="#070D18" BorderBrush="#17283D" BorderThickness="0,0,0,1" MouseLeftButtonDown="WindowChrome_MouseLeftButtonDown">
+      <Grid Margin="16,0,8,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="☾" Foreground="#8EDBFF" FontSize="20" Margin="0,0,9,0"/><TextBlock Text="MOON LAUNCHER" FontSize="11" FontWeight="Bold" Foreground="#DDEBFA" VerticalAlignment="Center"/><TextBlock Text="  /  WINDOWS" FontSize="9" Foreground="#617D9E" VerticalAlignment="Center"/></StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="—" Width="42" Height="30" Padding="0" Background="Transparent" BorderThickness="0" Foreground="#9DB2CA" Click="MinimizeWindow_Click" ToolTip="Minimize"/>
+          <Button Content="×" Width="42" Height="30" Padding="0" Background="Transparent" BorderThickness="0" Foreground="#9DB2CA" Click="CloseWindow_Click" ToolTip="Close"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1" Margin="24">
     <Grid.ColumnDefinitions><ColumnDefinition Width="238"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <Border Grid.Column="0" Background="#0A1424" BorderBrush="#1D3552" BorderThickness="1" CornerRadius="22" Padding="17" Margin="0,0,22,0">
       <DockPanel>
@@ -62,6 +74,7 @@
         </StackPanel>
       </ScrollViewer>
       <TextBlock Grid.Row="2" Text="MOON LAUNCHER   /   NATIVE WINDOWS   /   X64" Foreground="#6D89AA" FontSize="9" Margin="2,14,0,0"/>
+    </Grid>
     </Grid>
   </Grid>
 </Window>
