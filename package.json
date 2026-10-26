@@ -13,15 +13,15 @@
     "node": ">=22.16.0"
   },
   "dependencies": {
-    "@xmcl/core": "^2.16.2",
-    "@xmcl/installer": "^6.3.6",
-    "@xmcl/modrinth": "^2.5.3",
-    "@xmcl/user": "^4.4.2",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.6.2",
+    "minecraft-launcher-core": "^3.18.2"
   },
   "devDependencies": {
     "electron": "45.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "png-to-ico": "^2.1.8",
+    "sharp": "^0.34.3"
   },
   "build": {
     "appId": "com.moonlauncher.app",
