@@ -30,8 +30,8 @@
         <StackPanel>
           <Border x:Name="OverviewHero" Background="#10243A" BorderBrush="#2A5278" BorderThickness="1" CornerRadius="20" Padding="28" Margin="0,0,0,18">
             <StackPanel>
-              <TextBlock Text="MOON LAUNCHER  /  WINDOWS" Foreground="#91D9FF" FontSize="10" FontWeight="Bold"/>
-              <TextBlock Text="Your next world\nstarts here." FontSize="35" FontWeight="Bold" Margin="0,10,0,6"/>
+              <TextBlock Text="✦  MOON LAUNCHER     /     WINDOWS EDITION" Foreground="#91D9FF" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Text="Your next world&#10;starts here." FontSize="35" FontWeight="Bold" Margin="0,10,0,6"/>
               <TextBlock Text="Manage Minecraft versions and local profiles, discover Modrinth modpacks, and keep your multiplayer shortcuts in one place." Foreground="#B9CBE0" FontSize="13" TextWrapping="Wrap" MaxWidth="650"/>
               <WrapPanel Margin="0,18,0,0"><Button Content="Browse modpacks" Click="Modpacks_Click" Padding="16,10" Margin="0,0,8,0"/><Button Content="Load versions" Click="LoadVersions_Click" Padding="16,10" Margin="0,0,8,0"/><Button Content="Create instance" Click="CreateInstance_Click" Padding="16,10"/></WrapPanel>
             </StackPanel>
