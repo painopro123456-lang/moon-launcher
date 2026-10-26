@@ -4,11 +4,11 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="NativeStyles.xaml"/>
       </ResourceDictionary.MergedDictionaries>
-      <SolidColorBrush x:Key="PageBrush" Color="#060B16"/>
-      <SolidColorBrush x:Key="PanelBrush" Color="#0B192B"/>
-      <SolidColorBrush x:Key="AccentBrush" Color="#79D2FF"/>
-      <SolidColorBrush x:Key="TextBrush" Color="#F0F7FF"/>
-      <SolidColorBrush x:Key="MutedBrush" Color="#A4B9D2"/>
+      <SolidColorBrush x:Key="PageBrush" Color="#F3F6FB"/>
+      <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="AccentBrush" Color="#6C83D7"/>
+      <SolidColorBrush x:Key="TextBrush" Color="#202B40"/>
+      <SolidColorBrush x:Key="MutedBrush" Color="#738198"/>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

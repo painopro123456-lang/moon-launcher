@@ -1,0 +1,30 @@
+name: Build Moon Launcher
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ui/white-glass-sidebar
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish Windows app
+        run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moon-Launcher-white-glass-win-x64
+          path: dist/Moon-Launcher.exe
+          if-no-files-found: error
+          retention-days: 14
