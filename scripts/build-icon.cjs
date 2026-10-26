@@ -7,7 +7,7 @@ async function main() {
   const root = path.resolve(__dirname, '..');
   const svg = path.join(root, 'assets', 'moon-icon.svg');
   const png = path.join(root, 'assets', 'moon-icon.png');
-  const ico = path.join(root, 'assets', 'moon-icon.ico');
+  const ico = path.join(root, 'native', 'moon-icon.ico');
   await sharp(svg).resize(256, 256).png().toFile(png);
   const icoBuffer = await toIco(png);
   await fs.writeFile(ico, icoBuffer);
