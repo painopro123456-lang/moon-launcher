@@ -163,6 +163,14 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = "Could not open Modrinth project: " + ex.Message; }
     }
 
+    private void OpenSelectedModpackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ModpackResults.SelectedItem is not ModpackResult selected || string.IsNullOrWhiteSpace(selected.Slug))
+        { StatusText.Text = "Select a modpack first."; return; }
+        try { Process.Start(new ProcessStartInfo { FileName = $"https://modrinth.com/modpack/{Uri.EscapeDataString(selected.Slug)}", UseShellExecute = true }); }
+        catch (Exception ex) { StatusText.Text = "Could not open Modrinth project: " + ex.Message; }
+    }
+
     private async void InstallSelectedModpack_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedModpack is null) { StatusText.Text = "Choose a modpack from the results first."; return; }
