@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private readonly string _instancesPath;
     private readonly string _serversPath;
     private List<VersionEntry> _versions = new();
+    private readonly MicrosoftAuthService _microsoftAuth = new();
 
     private void WindowChrome_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -34,6 +35,39 @@ public partial class MainWindow : Window
         DataDirectory.Text = _root;
         RefreshInstances();
         RefreshServers();
+        RefreshMicrosoftAccountStatus();
+    }
+
+    private void RefreshMicrosoftAccountStatus()
+    {
+        var account = _microsoftAuth.GetSavedAccount();
+        AccountStatusText.Text = account is null ? "Not signed in" : "Signed in as " + account.Username;
+        MicrosoftSignInButton.Content = account is null ? "Sign in with Microsoft" : "Switch account";
+        MicrosoftSignOutButton.Visibility = account is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private async void MicrosoftSignIn_Click(object sender, RoutedEventArgs e)
+    {
+        MicrosoftSignInButton.IsEnabled = false;
+        AccountStatusText.Text = "Opening Microsoft sign-in in your browser…";
+        try
+        {
+            var account = await _microsoftAuth.SignInAsync();
+            AccountStatusText.Text = "Signed in as " + account.Username;
+            StatusText.Text = "Microsoft account connected: " + account.Username + ".";
+        }
+        catch (Exception ex)
+        {
+            AccountStatusText.Text = "Sign-in failed";
+            StatusText.Text = "Microsoft sign-in failed: " + ex.Message;
+            MessageBox.Show(this, ex.Message, "Microsoft sign-in", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { MicrosoftSignInButton.IsEnabled = true; RefreshMicrosoftAccountStatus(); }
+    }
+
+    private void MicrosoftSignOut_Click(object sender, RoutedEventArgs e)
+    {
+        _microsoftAuth.SignOut(); RefreshMicrosoftAccountStatus(); StatusText.Text = "Signed out of Microsoft account.";
     }
 
     private void ShowPanel(string panel)
