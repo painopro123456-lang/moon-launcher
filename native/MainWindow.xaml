@@ -28,7 +28,7 @@
           <Button Content="⚙   Settings" Click="Settings_Click" Style="{StaticResource NavButton}"/>
         </StackPanel>
         <Border DockPanel.Dock="Bottom" Background="#1B1240" BorderBrush="#3A246B" BorderThickness="1" CornerRadius="14" Padding="13" Margin="0,20,0,0">
-          <StackPanel><TextBlock Text="ACCOUNT" FontSize="9" FontWeight="Bold" Foreground="#7E9AB8"/><TextBlock Text="Microsoft sign-in not yet ported" TextWrapping="Wrap" Margin="0,7,0,0" FontSize="11" Foreground="#DED5FF"/></StackPanel>
+          <StackPanel><TextBlock Text="MICROSOFT ACCOUNT" FontSize="9" FontWeight="Bold" Foreground="#C4A0FF"/><TextBlock x:Name="AccountStatusText" Text="Not signed in" TextWrapping="Wrap" Margin="0,7,0,10" FontSize="11" Foreground="#DED5FF"/><Button x:Name="MicrosoftSignInButton" Content="Sign in with Microsoft" Click="MicrosoftSignIn_Click" Padding="10,8" FontSize="11"/><Button x:Name="MicrosoftSignOutButton" Content="Sign out" Click="MicrosoftSignOut_Click" Padding="10,7" Margin="0,6,0,0" FontSize="10" Visibility="Collapsed"/></StackPanel>
         </Border>
       </DockPanel>
     </Border>
