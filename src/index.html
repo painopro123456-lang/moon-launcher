@@ -150,6 +150,10 @@
               <div><strong id="settings-account-name">Not signed in</strong><span id="settings-account-detail">Sign in with the Microsoft account that owns Minecraft: Java Edition.</span></div>
               <div class="setting-actions"><button class="secondary-button" id="sign-in-button">Sign in</button><button class="text-button" id="sign-out-button" hidden>Sign out</button></div>
             </div>
+            <div class="setting-row">
+              <div><strong>Offline username</strong><span>Launch with a local username without Microsoft sign-in. This does not grant access to authenticated servers or verify game ownership.</span></div>
+              <div class="setting-actions"><button class="secondary-button" id="offline-account-button">Use offline account</button></div>
+            </div>
           </div>
         </div>
 
@@ -248,6 +252,15 @@
     <p class="auth-instructions" id="auth-status-message">A secure Microsoft sign-in window will open in your browser. Sign in there, then return to Moon Launcher.</p>
     <div id="auth-code-panel" class="auth-code-panel" hidden><span class="field-label">Your one-time code</span><strong id="auth-user-code">———</strong><div class="auth-actions"><button class="secondary-button" id="copy-auth-code">Copy code</button><button class="primary-button" id="open-auth-browser">Open Microsoft sign-in</button></div></div>
     <button class="text-button auth-cancel" id="cancel-auth">Cancel sign-in</button>
+  </dialog>
+
+  <dialog id="offline-account-dialog" class="dialog">
+    <form id="offline-account-form" method="dialog">
+      <div class="dialog-header"><div><div class="eyebrow">LOCAL PROFILE</div><h2>Offline account</h2></div><button type="button" class="close-button" id="close-offline-dialog" aria-label="Close">×</button></div>
+      <p class="dialog-note">Choose a username for local/offline play. This does not authenticate ownership or bypass online-mode server authentication.</p>
+      <label class="field-label">Username<input name="username" id="offline-username" maxlength="16" minlength="3" pattern="[A-Za-z0-9_]{3,16}" autocomplete="off" placeholder="MinecraftPlayer" required></label>
+      <button class="primary-button dialog-submit" type="submit">Use offline account</button>
+    </form>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
