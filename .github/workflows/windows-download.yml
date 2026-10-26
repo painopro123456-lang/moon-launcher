@@ -45,16 +45,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
           if (-not (Test-Path "dist/Moon-Launcher-Setup.exe")) { throw "Installer output was not produced." }
 
-      - name: Upload Windows downloads
-        uses: actions/upload-artifact@v4
-        with:
-          name: Moon-Launcher-Windows
-          path: |
-            dist/Moon-Launcher.exe
-            dist/Moon-Launcher-Setup.exe
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Publish Windows downloads
         uses: softprops/action-gh-release@v2
         with:
