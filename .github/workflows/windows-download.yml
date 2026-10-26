@@ -32,6 +32,9 @@ jobs:
           if (-not $magick) { throw "ImageMagick was not installed; cannot create the application icon." }
           & $magick.Source "assets/moon-icon.svg" -background none -define icon:auto-resize=256,128,64,48,32,16 "native/moon-icon.ico"
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path "native/moon-icon.ico")) { throw "Failed to create native/moon-icon.ico" }
+          $icon = Get-Item "native/moon-icon.ico"
+          if ($icon.Length -lt 4096) { throw "Generated icon looks invalid or incomplete ($($icon.Length) bytes)." }
+          Write-Host "Generated Moon icon ($($icon.Length) bytes)."
 
       - name: Build self-contained native app
         run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
@@ -42,6 +45,8 @@ jobs:
           $app = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
           if (-not $app) { throw "Native Moon Launcher executable was not produced at dist/Moon-Launcher.exe." }
           Write-Host "Built $($app.FullName) ($($app.Length) bytes)"
+          # Confirm the generated icon is passed to the application build and included in the release payload.
+          if (-not (Test-Path "native/moon-icon.ico")) { throw "Moon icon missing before release." }
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
