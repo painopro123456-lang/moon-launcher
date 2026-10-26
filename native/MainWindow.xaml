@@ -56,7 +56,7 @@
               <StackPanel><TextBlock Text="LOCAL INSTANCES" Foreground="#91A9C5" FontSize="10" FontWeight="Bold"/><TextBlock x:Name="InstanceCount" Text="0 instances" FontSize="25" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </UniformGrid>
-          <Border Background="{StaticResource PanelBrush}" BorderBrush="#203954" BorderThickness="1" CornerRadius="16" Padding="20" Margin="0,0,0,16">
+          <Border x:Name="WorkspacePanel" Background="{StaticResource PanelBrush}" BorderBrush="#203954" BorderThickness="1" CornerRadius="16" Padding="20" Margin="0,0,0,16">
             <StackPanel><TextBlock Text="Workspace" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/><TextBlock x:Name="StatusText" Text="Ready." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/><ListBox x:Name="VersionsList" Visibility="Collapsed" Margin="0,12,0,0" MaxHeight="250" Background="#081321" Foreground="{StaticResource TextBrush}" BorderThickness="0"/></StackPanel>
           </Border>
           <Border x:Name="ModpacksPanel" Visibility="Collapsed" Background="#0D1726" BorderBrush="#253A53" BorderThickness="1" CornerRadius="16" Padding="22" Margin="0,0,0,16">
