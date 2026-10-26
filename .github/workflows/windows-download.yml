@@ -23,6 +23,16 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Create Windows icon from Moon artwork
+        shell: pwsh
+        run: |
+          choco install imagemagick.app --yes --no-progress
+          $magick = Get-Command magick -ErrorAction SilentlyContinue
+          if (-not $magick) { $magickPath = "$env:ProgramFiles\ImageMagick-7.1.1-Q16-HDRI\magick.exe"; if (Test-Path $magickPath) { $magick = $magickPath } }
+          if (-not $magick) { throw "ImageMagick was not installed; cannot create the application icon." }
+          & $magick.Source "assets/moon-icon.svg" -background none -define icon:auto-resize=256,128,64,48,32,16 "native/moon-icon.ico"
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path "native/moon-icon.ico")) { throw "Failed to create native/moon-icon.ico" }
+
       - name: Build self-contained native app
         run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
 
