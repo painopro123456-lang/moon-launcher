@@ -129,14 +129,17 @@ function handleLauncherProgress(progress) {
 function renderAccount(status) {
   state.account = status;
   const name = status?.signedIn ? status.username : "Not signed in";
-  const detail = status?.signedIn ? "Minecraft account connected" : "Minecraft account";
+  const detail = status?.signedIn ? (status.offline ? "Offline account" : "Microsoft account connected") : "Minecraft account";
   $(".account-card strong").textContent = name;
   $(".account-card span").textContent = detail;
   $(".avatar").textContent = status?.signedIn ? String(name || "M").slice(0, 1).toUpperCase() : "?";
   $("#settings-account-name").textContent = status?.signedIn ? "Signed in as " + name : "Not signed in";
   $("#settings-account-detail").textContent = status?.signedIn
-    ? "This Microsoft account is ready for Minecraft."
-    : "Sign in with the Microsoft account that owns Minecraft: Java Edition.";
+    ? (status.offline
+      ? "Offline profile active. Online-mode servers still require an authenticated account."
+      : "This Microsoft account is ready for Minecraft.")
+    : "Sign in with Microsoft or choose an offline username.";
+  $("#offline-account-button").textContent = status?.offline ? "Change offline username" : "Use offline account";
   $("#sign-in-button").hidden = Boolean(status?.signedIn);
   $("#topbar-sign-in").hidden = Boolean(status?.signedIn);
   $("#topbar-sign-in").textContent = status?.signedIn ? "Signed in" : "Sign in";
@@ -157,7 +160,7 @@ async function loadSavedAccounts() {
     select.replaceChildren();
     if (!accounts.length) select.add(new Option("No saved accounts yet", ""));
     for (const account of accounts) {
-      const option = new Option(account.username + (account.active ? " · Active" : ""), account.uuid);
+      const option = new Option(account.username + (account.offline ? " · Offline" : "") + (account.active ? " · Active" : ""), account.uuid);
       select.add(option);
     }
     $("#switch-account-button").disabled = !accounts.length;
@@ -709,6 +712,28 @@ $(".account-card").addEventListener("click", () => { if (state.account?.signedIn
 $(".account-card").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (state.account?.signedIn) setView("settings"); else startMicrosoftSignIn(); } });
 $("#open-folder-settings").addEventListener("click", () => api.openInstanceFolder());
 $("#sign-in-button").addEventListener("click", startMicrosoftSignIn);
+$("#offline-account-button").addEventListener("click", () => {
+  $("#offline-username").value = state.account?.offline ? state.account.username : "";
+  $("#offline-account-dialog").showModal();
+});
+$("#close-offline-dialog").addEventListener("click", () => $("#offline-account-dialog").close());
+$("#offline-account-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const username = $("#offline-username").value.trim();
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const account = await api.createOfflineAccount(username);
+    renderAccount(account);
+    await loadSavedAccounts();
+    $("#offline-account-dialog").close();
+    showToast("Offline account active: " + account.username + ".");
+  } catch (error) {
+    showToast(error.message || "Could not create the offline account.");
+  } finally {
+    button.disabled = false;
+  }
+});
 $("#sign-out-button").addEventListener("click", async () => { try { await api.signOutMicrosoft(); await refreshAccountStatus(); await loadSavedAccounts(); showToast("Signed out. Your saved account profiles remain available."); } catch (error) { showToast(error.message); } });
 $("#check-updates-button").addEventListener("click", async () => {
   const button = $("#check-updates-button");
