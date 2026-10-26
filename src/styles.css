@@ -1817,3 +1817,13 @@ button:disabled { opacity: .48; cursor: not-allowed !important; transform: none 
   .search-box { flex-basis: 100%; }
   .quick-version-row { grid-template-columns: 1fr 1fr; }
 }
+
+
+/* Keep Microsoft sign-in immediately accessible from every view. */
+.topbar-sign-in { flex: 0 0 auto; min-height: 36px; padding: 0 14px; white-space: nowrap; }
+.topbar-sign-in[hidden] { display: none; }
+@media (max-width: 1050px) {
+  .topbar-right { gap: 10px; }
+  .catalog-state { max-width: 155px; }
+  .catalog-state span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
