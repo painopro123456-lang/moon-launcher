@@ -17,6 +17,14 @@ public partial class MainWindow : Window
     private readonly string _serversPath;
     private List<VersionEntry> _versions = new();
 
+    private void WindowChrome_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed) DragMove();
+    }
+
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
     public MainWindow()
     {
         InitializeComponent();
