@@ -15,60 +15,40 @@ concurrency:
 
 jobs:
   build-windows:
-    name: Build Windows x64 EXE and installer
+    name: Build original Electron Moon Launcher UI for Windows x64
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install .NET 8 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Install Node.js for icon generation
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Generate app icon from project artwork
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Windows app icon
         shell: pwsh
         run: |
           npm install --no-save sharp png-to-ico
           node scripts/build-icon.cjs
           if (-not (Test-Path "native/moon-icon.ico")) { throw "App icon was not generated." }
 
-      - name: Restore project
-        run: dotnet restore native/MoonLauncher.csproj
+      - name: Build Electron portable EXE and installer
+        run: npm run dist:win
 
-      - name: Build portable EXE with embedded icon
-        run: >-
-          dotnet publish native/MoonLauncher.csproj
-          --configuration Release
-          --runtime win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          --output dist
-
-      - name: Verify EXE
+      - name: Verify outputs
         shell: pwsh
         run: |
           $exe = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
-          if (-not $exe -or $exe.Length -lt 1000000) { throw "Moon-Launcher.exe missing or unexpectedly small." }
-
-      - name: Install Inno Setup
-        run: choco install innosetup --yes --no-progress
-
-      - name: Build Windows installer
-        shell: pwsh
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer/MoonLauncher.iss"
           $setup = Get-Item "dist/Moon-Launcher-Setup.exe" -ErrorAction SilentlyContinue
-          if (-not $setup -or $setup.Length -lt 1000000) { throw "Moon-Launcher-Setup.exe was not created." }
+          if (-not $exe -or $exe.Length -lt 10000000) { throw "Portable Electron EXE missing or unexpectedly small." }
+          if (-not $setup -or $setup.Length -lt 10000000) { throw "Installer missing or unexpectedly small." }
 
       - name: Upload EXE and installer as workflow artifact
         uses: actions/upload-artifact@v4
@@ -89,10 +69,9 @@ jobs:
           body: |
             **Moon Launcher for Windows x64**
 
-            - **Moon-Launcher-Setup.exe** — installer. Creates Start Menu shortcuts and optionally a desktop shortcut.
+            This build uses the original Electron-based Moon Launcher interface.
+            - **Moon-Launcher-Setup.exe** — installer.
             - **Moon-Launcher.exe** — portable version.
-
-            The app icon is embedded in the executable and used by the installer.
           files: |
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
