@@ -1,95 +1,95 @@
-name: Windows native download
+name: Build downloadable Moon Launcher EXE
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
-jobs:
-  build:
-    name: Build Moon Launcher and Windows installer
-    runs-on: windows-latest
-    steps:
-      - name: Check out Moon Launcher
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+concurrency:
+  group: moon-launcher-windows-build
+  cancel-in-progress: false
 
-      - name: Set up .NET
+jobs:
+  build-windows:
+    name: Build portable Windows x64 EXE
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: 8.0.x
 
-      - name: Create Windows icon from Moon artwork
+      - name: Restore project
+        run: dotnet restore native/MoonLauncher.csproj
+
+      - name: Build single-file portable EXE
+        run: >-
+          dotnet publish native/MoonLauncher.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          --output publish
+
+      - name: Verify downloadable EXE
         shell: pwsh
         run: |
-          choco install imagemagick.app --yes --no-progress
-          $magick = Get-Command magick -ErrorAction SilentlyContinue
-          if (-not $magick) { $magickPath = "$env:ProgramFiles\ImageMagick-7.1.1-Q16-HDRI\magick.exe"; if (Test-Path $magickPath) { $magick = $magickPath } }
-          if (-not $magick) { throw "ImageMagick was not installed; cannot create the application icon." }
-          & $magick.Source "assets/moon-icon.svg" -background none -define icon:auto-resize=256,128,64,48,32,16 "native/moon-icon.ico"
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path "native/moon-icon.ico")) { throw "Failed to create native/moon-icon.ico" }
-          $icon = Get-Item "native/moon-icon.ico"
-          if ($icon.Length -lt 4096) { throw "Generated icon looks invalid or incomplete ($($icon.Length) bytes)." }
-          Write-Host "Generated Moon icon ($($icon.Length) bytes)."
+          $exe = Get-Item "publish/Moon-Launcher.exe" -ErrorAction SilentlyContinue
+          if (-not $exe) {
+            Get-ChildItem "publish" -Recurse | Format-Table FullName, Length
+            throw "Build failed: publish/Moon-Launcher.exe was not created."
+          }
+          if ($exe.Length -lt 1000000) {
+            throw "The EXE is unexpectedly small ($($exe.Length) bytes); refusing to publish a likely incomplete build."
+          }
+          Write-Host "Verified $($exe.FullName)"
+          Write-Host "Size: $($exe.Length) bytes"
 
-      - name: Build self-contained native app
-        run: dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
+      - name: Upload EXE as a downloadable workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moon-Launcher-Windows-x64
+          path: publish/Moon-Launcher.exe
+          if-no-files-found: error
+          retention-days: 30
 
-      - name: Verify executable exists
-        shell: pwsh
-        run: |
-          $app = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
-          if (-not $app) { throw "Native Moon Launcher executable was not produced at dist/Moon-Launcher.exe." }
-          Write-Host "Built $($app.FullName) ($($app.Length) bytes)"
-          # Confirm the generated icon is passed to the application build and included in the release payload.
-          if (-not (Test-Path "native/moon-icon.ico")) { throw "Moon icon missing before release." }
-
-      - name: Install Inno Setup
-        run: choco install innosetup --yes --no-progress
-
-      - name: Build Windows installer
-        shell: pwsh
-        run: |
-          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler not found at $compiler" }
-          & $compiler "installer/MoonLauncher.iss"
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
-          if (-not (Test-Path "dist/Moon-Launcher-Setup.exe")) { throw "Installer output was not produced." }
-
-      - name: Publish Windows downloads
+      - name: Publish direct EXE download to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           target_commitish: main
-          name: Moon Launcher — Native Windows Build
+          name: Moon Launcher — Latest Windows Build
           body: |
-            Native WPF build for Windows x64.
+            **Portable Windows x64 build of Moon Launcher.**
 
-            **Recommended:** Download and run **Moon-Launcher-Setup.exe** for a normal Windows installation. It adds Moon Launcher to Windows Apps/Installed apps and creates an uninstaller, Start Menu shortcut, and optional desktop shortcut.
+            Download **Moon-Launcher.exe** below and run it directly. This build is self-contained and does not require a separate .NET installation.
 
-            **Portable option:** Download **Moon-Launcher.exe** to run without installing. A portable executable does not have an uninstall entry; close it and delete the file to remove it.
-
-            Uninstalling removes the installed application and shortcuts. It does not automatically delete user data.
-          files: |
-            dist/Moon-Launcher.exe
-            dist/Moon-Launcher-Setup.exe
+            If Windows SmartScreen shows a warning, only run the file if you trust this source and downloaded it from this repository.
+          files: publish/Moon-Launcher.exe
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Show downloads on workflow page
+      - name: Print download links
         if: success()
         shell: pwsh
         run: |
           @"
-          ## Moon Launcher — Windows downloads
+          ## Moon Launcher is ready
 
-          - [Recommended: Moon-Launcher-Setup.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher-Setup.exe) — installs normally and includes an uninstaller.
-          - [Portable Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe) — run directly; close and delete the file to remove it.
+          - [Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)
+          - [Open all workflow runs and artifacts](https://github.com/painopro123456-lang/moon-launcher/actions/workflows/build-portable-exe.yml)
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
