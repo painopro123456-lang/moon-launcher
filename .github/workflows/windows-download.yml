@@ -1,4 +1,4 @@
-name: Build downloadable Moon Launcher EXE
+name: Build downloadable Moon Launcher EXE and installer
 
 on:
   push:
@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   build-windows:
-    name: Build portable Windows x64 EXE
+    name: Build Windows x64 EXE and installer
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
@@ -28,10 +28,22 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Install Node.js for icon generation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate app icon from project artwork
+        shell: pwsh
+        run: |
+          npm install --no-save sharp png-to-ico
+          node scripts/build-icon.cjs
+          if (-not (Test-Path "native/moon-icon.ico")) { throw "App icon was not generated." }
+
       - name: Restore project
         run: dotnet restore native/MoonLauncher.csproj
 
-      - name: Build single-file portable EXE
+      - name: Build portable EXE with embedded icon
         run: >-
           dotnet publish native/MoonLauncher.csproj
           --configuration Release
@@ -40,56 +52,52 @@ jobs:
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
-          --output publish
+          --output dist
 
-      - name: Verify downloadable EXE
+      - name: Verify EXE
         shell: pwsh
         run: |
-          $exe = Get-Item "publish/Moon-Launcher.exe" -ErrorAction SilentlyContinue
-          if (-not $exe) {
-            Get-ChildItem "publish" -Recurse | Format-Table FullName, Length
-            throw "Build failed: publish/Moon-Launcher.exe was not created."
-          }
-          if ($exe.Length -lt 1000000) {
-            throw "The EXE is unexpectedly small ($($exe.Length) bytes); refusing to publish a likely incomplete build."
-          }
-          Write-Host "Verified $($exe.FullName)"
-          Write-Host "Size: $($exe.Length) bytes"
+          $exe = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
+          if (-not $exe -or $exe.Length -lt 1000000) { throw "Moon-Launcher.exe missing or unexpectedly small." }
 
-      - name: Upload EXE as a downloadable workflow artifact
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer/MoonLauncher.iss"
+          $setup = Get-Item "dist/Moon-Launcher-Setup.exe" -ErrorAction SilentlyContinue
+          if (-not $setup -or $setup.Length -lt 1000000) { throw "Moon-Launcher-Setup.exe was not created." }
+
+      - name: Upload EXE and installer as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: Moon-Launcher-Windows-x64
-          path: publish/Moon-Launcher.exe
+          path: |
+            dist/Moon-Launcher.exe
+            dist/Moon-Launcher-Setup.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish direct EXE download to GitHub Releases
+      - name: Publish downloads to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           target_commitish: main
           name: Moon Launcher — Latest Windows Build
           body: |
-            **Portable Windows x64 build of Moon Launcher.**
+            **Moon Launcher for Windows x64**
 
-            Download **Moon-Launcher.exe** below and run it directly. This build is self-contained and does not require a separate .NET installation.
+            - **Moon-Launcher-Setup.exe** — installer. Creates Start Menu shortcuts and optionally a desktop shortcut.
+            - **Moon-Launcher.exe** — portable version.
 
-            If Windows SmartScreen shows a warning, only run the file if you trust this source and downloaded it from this repository.
-          files: publish/Moon-Launcher.exe
+            The app icon is embedded in the executable and used by the installer.
+          files: |
+            dist/Moon-Launcher.exe
+            dist/Moon-Launcher-Setup.exe
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Print download links
-        if: success()
-        shell: pwsh
-        run: |
-          @"
-          ## Moon Launcher is ready
-
-          - [Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)
-          - [Open the Windows builder and its artifacts](https://github.com/painopro123456-lang/moon-launcher/actions/workflows/windows-download.yml)
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
