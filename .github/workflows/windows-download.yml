@@ -91,5 +91,5 @@ jobs:
           ## Moon Launcher is ready
 
           - [Download Moon-Launcher.exe](https://github.com/painopro123456-lang/moon-launcher/releases/download/latest/Moon-Launcher.exe)
-          - [Open all workflow runs and artifacts](https://github.com/painopro123456-lang/moon-launcher/actions/workflows/build-portable-exe.yml)
+          - [Open the Windows builder and its artifacts](https://github.com/painopro123456-lang/moon-launcher/actions/workflows/windows-download.yml)
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
