@@ -1,11 +1,11 @@
-<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Height="800" Width="1280" MinHeight="680" MinWidth="1000" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
-  <Grid Margin="20">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="225"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-    <Border Grid.Column="0" Background="#0B1424" BorderBrush="#1C2A40" BorderThickness="1" CornerRadius="18" Padding="16" Margin="0,0,18,0">
+<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Height="840" Width="1360" MinHeight="700" MinWidth="1080" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+  <Grid Margin="26">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="238"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Border Grid.Column="0" Background="#0A1424" BorderBrush="#1D3552" BorderThickness="1" CornerRadius="22" Padding="17" Margin="0,0,22,0">
       <DockPanel>
         <StackPanel DockPanel.Dock="Top">
-          <StackPanel Orientation="Horizontal" Margin="2,5,0,4"><TextBlock Text="☾" FontSize="27" Foreground="#A8DFFF" Margin="0,0,9,0"/><TextBlock Text="MOON" FontSize="23" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel>
-          <TextBlock Text="MINECRAFT LAUNCHER" FontSize="9" Foreground="{StaticResource MutedBrush}" Margin="3,0,0,32"/>
+          <StackPanel Orientation="Horizontal" Margin="2,5,0,4"><TextBlock Text="☾" FontSize="31" Foreground="#A8DFFF" Margin="0,0,10,0"/><TextBlock Text="MOON" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel>
+          <TextBlock Text="MINECRAFT LAUNCHER" FontSize="9" Foreground="{StaticResource MutedBrush}" Margin="3,0,0,35"/>
           <TextBlock Text="LIBRARY" Foreground="#6F89A8" FontSize="10" FontWeight="Bold" Margin="4,0,0,9"/>
           <Button Content="⌂   Overview" Click="Overview_Click" Style="{StaticResource NavButton}"/>
           <Button Content="◈   Minecraft versions" Click="Versions_Click" Style="{StaticResource NavButton}"/>
@@ -15,7 +15,7 @@
           <Button Content="◎   Servers" Click="Servers_Click" Style="{StaticResource NavButton}"/>
           <Button Content="⚙   Settings" Click="Settings_Click" Style="{StaticResource NavButton}"/>
         </StackPanel>
-        <Border DockPanel.Dock="Bottom" Background="#101F32" CornerRadius="12" Padding="12" Margin="0,20,0,0">
+        <Border DockPanel.Dock="Bottom" Background="#101F32" BorderBrush="#213C5A" BorderThickness="1" CornerRadius="14" Padding="13" Margin="0,20,0,0">
           <StackPanel><TextBlock Text="ACCOUNT" FontSize="9" FontWeight="Bold" Foreground="#7E9AB8"/><TextBlock Text="Microsoft sign-in not yet ported" TextWrapping="Wrap" Margin="0,7,0,0" FontSize="11" Foreground="#C2D2E5"/></StackPanel>
         </Border>
       </DockPanel>
@@ -28,23 +28,23 @@
       </StackPanel>
       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
         <StackPanel>
-          <Border x:Name="OverviewHero" Background="#10243A" BorderBrush="#23425F" BorderThickness="1" CornerRadius="16" Padding="24" Margin="0,0,0,16">
+          <Border x:Name="OverviewHero" Background="#10243A" BorderBrush="#2A5278" BorderThickness="1" CornerRadius="20" Padding="28" Margin="0,0,0,18">
             <StackPanel>
               <TextBlock Text="MOON LAUNCHER  /  WINDOWS" Foreground="#91D9FF" FontSize="10" FontWeight="Bold"/>
-              <TextBlock Text="A cleaner way to play." FontSize="30" FontWeight="Bold" Margin="0,10,0,6"/>
-              <TextBlock Text="Manage Minecraft versions and local profiles, discover Modrinth modpacks, and keep your multiplayer shortcuts in one place." Foreground="#B9CBE0" FontSize="13" TextWrapping="Wrap" MaxWidth="690"/>
+              <TextBlock Text="Your next world\nstarts here." FontSize="35" FontWeight="Bold" Margin="0,10,0,6"/>
+              <TextBlock Text="Manage Minecraft versions and local profiles, discover Modrinth modpacks, and keep your multiplayer shortcuts in one place." Foreground="#B9CBE0" FontSize="13" TextWrapping="Wrap" MaxWidth="650"/>
               <WrapPanel Margin="0,18,0,0"><Button Content="Browse modpacks" Click="Modpacks_Click" Padding="16,10" Margin="0,0,8,0"/><Button Content="Load versions" Click="LoadVersions_Click" Padding="16,10" Margin="0,0,8,0"/><Button Content="Create instance" Click="CreateInstance_Click" Padding="16,10"/></WrapPanel>
             </StackPanel>
           </Border>
           <UniformGrid x:Name="OverviewStats" Columns="2" Margin="0,0,0,16">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,8,0">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="16" Padding="20" Margin="0,0,8,0">
               <StackPanel><TextBlock Text="VERSION CATALOG" Foreground="{StaticResource MutedBrush}" FontSize="10" FontWeight="Bold"/><TextBlock x:Name="VersionCount" Text="Not loaded" FontSize="25" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel>
             </Border>
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="14" Padding="18" Margin="8,0,0,0">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="16" Padding="20" Margin="8,0,0,0">
               <StackPanel><TextBlock Text="LOCAL INSTANCES" Foreground="{StaticResource MutedBrush}" FontSize="10" FontWeight="Bold"/><TextBlock x:Name="InstanceCount" Text="0 instances" FontSize="25" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel>
             </Border>
           </UniformGrid>
-          <Border Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,0,16">
+          <Border Background="{StaticResource PanelBrush}" BorderBrush="#203954" BorderThickness="1" CornerRadius="16" Padding="20" Margin="0,0,0,16">
             <StackPanel><TextBlock Text="Workspace" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/><TextBlock x:Name="StatusText" Text="Ready." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/><ListBox x:Name="VersionsList" Visibility="Collapsed" Margin="0,12,0,0" MaxHeight="250" Background="#081321" Foreground="{StaticResource TextBrush}" BorderThickness="0"/></StackPanel>
           </Border>
           <Border x:Name="ModpacksPanel" Visibility="Collapsed" Background="{StaticResource PanelBrush}" BorderBrush="#1B304A" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,0,16">
