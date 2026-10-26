@@ -1,9 +1,13 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const sharp = require('sharp');
-const toIco = require('png-to-ico');
+const pngToIcoModule = require('png-to-ico');
+const toIco = typeof pngToIcoModule === 'function' ? pngToIcoModule : pngToIcoModule.default;
 
 async function main() {
+  if (typeof toIco !== 'function') {
+    throw new TypeError('png-to-ico did not expose an ICO conversion function.');
+  }
   const root = path.resolve(__dirname, '..');
   const svg = path.join(root, 'assets', 'moon-icon.svg');
   const png = path.join(root, 'assets', 'moon-icon.png');
