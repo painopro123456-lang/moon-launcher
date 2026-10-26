@@ -767,6 +767,7 @@ async function listSavedAccounts() {
   return vault.accounts.filter((item) => item?.profile?.id && item?.profile?.name).map((item) => ({
     uuid: String(item.profile.id),
     username: String(item.profile.name),
+    offline: item.offline === true,
     active: String(active?.profile?.id || "").toLowerCase() === String(item.profile.id).toLowerCase()
   }));
 }
@@ -800,8 +801,30 @@ async function getAccountStatus() {
   const account = await readSavedAccount();
   const clientId = await readMicrosoftClientId();
   return account?.profile
-    ? { signedIn: true, username: String(account.profile.name || "Minecraft player"), uuid: String(account.profile.id || ""), clientId }
-    : { signedIn: false, clientId };
+    ? { signedIn: true, username: String(account.profile.name || "Minecraft player"), uuid: String(account.profile.id || ""), clientId, offline: account.offline === true }
+    : { signedIn: false, clientId, offline: false };
+}
+function offlineUuid(username) {
+  const bytes = crypto.createHash("md5").update("OfflinePlayer:" + username, "utf8").digest();
+  bytes[6] = (bytes[6] & 0x0f) | 0x30;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+}
+async function createOfflineAccount(value) {
+  const username = String(value || "").trim();
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {
+    throw new Error("Offline usernames must be 3–16 characters and use only letters, numbers, and underscores.");
+  }
+  const account = {
+    offline: true,
+    profile: { id: offlineUuid(username), name: username },
+    xuid: "",
+    minecraftAccessToken: "0",
+    minecraftExpiresAt: 0
+  };
+  await saveAccount(account);
+  return { signedIn: true, username, uuid: account.profile.id, offline: true };
 }
 async function signOutMicrosoft() {
   await fs.rm(getEncryptedAccountPath(), { force: true });
@@ -1214,7 +1237,9 @@ async function launchInstance(instanceId) {
         uuid: account.profile.id,
         name: account.profile.name,
         user_properties: "{}",
-        meta: { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
+        meta: account.offline === true
+          ? { type: "mojang", demo: false }
+          : { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
       },
       root: minecraftRoot,
       version: { number: instance.minecraftVersion, type: versionDetails.type },
@@ -1547,6 +1572,7 @@ ipcMain.handle("auth:remove-profile", (_event, uuid) => removeSavedAccount(uuid)
 ipcMain.handle("auth:status", getAccountStatus);
 ipcMain.handle("auth:save-client-id", (_event, clientId) => saveMicrosoftClientId(clientId));
 ipcMain.handle("auth:sign-in", signInWithMicrosoft);
+ipcMain.handle("auth:create-offline", (_event, username) => createOfflineAccount(username));
 ipcMain.handle("auth:cancel", () => { authCancelRequested = true; return true; });
 ipcMain.handle("auth:sign-out", signOutMicrosoft);
 ipcMain.handle("auth:open-verification", async (_event, value) => {
