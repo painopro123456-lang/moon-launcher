@@ -1827,3 +1827,44 @@ button:disabled { opacity: .48; cursor: not-allowed !important; transform: none 
   .catalog-state { max-width: 155px; }
   .catalog-state span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+
+/* Launcher activity / logs */
+.logs-intro { margin-bottom: 24px; }
+.logs-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.logs-search { flex: 1 1 260px; min-width: 180px; }
+.logs-filter { min-width: 135px; }
+.logs-toolbar .text-button { padding: 10px 8px; }
+.logs-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 17px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 13px; background: linear-gradient(115deg, rgba(129,168,255,.08), rgba(169,140,255,.035)); color: var(--muted); font-size: 12px; }
+.logs-summary > div { display: flex; align-items: center; gap: 9px; }
+.logs-summary strong { color: var(--text); font-size: 13px; font-weight: 650; }
+.logs-summary-note { padding-left: 8px; border-left: 1px solid var(--border); color: var(--quiet); }
+.logs-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #71dfa6; box-shadow: 0 0 12px #71dfa655; }
+.logs-panel { overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 15px; background: #101017; box-shadow: 0 12px 36px rgba(0,0,0,.12); }
+.logs-panel-head { display: grid; grid-template-columns: 88px 72px minmax(0,1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.025); color: #777487; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.logs-list { max-height: min(52vh, 560px); min-height: 250px; overflow: auto; }
+.log-row { display: grid; grid-template-columns: 88px 72px minmax(0,1fr); gap: 12px; align-items: start; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.045); transition: background .15s ease; }
+.log-row:last-child { border-bottom: 0; }
+.log-row:hover { background: rgba(255,255,255,.025); }
+.log-time { padding-top: 2px; color: #777487; font: 11px/1.5 "Cascadia Code", Consolas, monospace; font-variant-numeric: tabular-nums; }
+.log-level { justify-self: start; padding: 3px 6px; border: 1px solid transparent; border-radius: 5px; font-size: 9px; font-weight: 850; letter-spacing: .08em; }
+.log-level-info { color: #9fc5ff; border-color: #80adff20; background: #80adff10; }
+.log-level-success { color: #87e6b1; border-color: #75e0a120; background: #75e0a110; }
+.log-level-warning { color: #f3ca7b; border-color: #f3ca7b22; background: #f3ca7b10; }
+.log-level-error { color: #ff969e; border-color: #ff7f8b28; background: #ff7f8b12; }
+.log-message { min-width: 0; display: flex; flex-direction: column; gap: 4px; color: #dedbe8; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.log-message small { color: #777487; font-size: 10px; }
+.logs-empty { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 28px; text-align: center; color: var(--muted); }
+.logs-empty strong { color: var(--text); font-size: 14px; }
+.logs-empty p { max-width: 390px; margin: 0; color: var(--quiet); font-size: 12px; line-height: 1.6; }
+.logs-empty-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 4px; border: 1px solid rgba(169,140,255,.2); border-radius: 13px; color: var(--blue); background: rgba(129,168,255,.07); font-size: 22px; }
+.logs-footnote { margin: 12px 2px 0; color: var(--quiet); font-size: 11px; }
+@media (max-width: 980px) {
+  .logs-toolbar { align-items: stretch; }
+  .logs-search { flex-basis: 100%; }
+}
+@media (max-width: 700px) {
+  .logs-panel-head, .log-row { grid-template-columns: 68px 60px minmax(0,1fr); gap: 8px; padding-left: 10px; padding-right: 10px; }
+  .logs-panel-head { font-size: 8px; }
+  .log-time { font-size: 10px; }
+}
