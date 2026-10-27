@@ -1869,3 +1869,15 @@ button:disabled { opacity: .48; cursor: not-allowed !important; transform: none 
   .logs-panel-head { font-size: 8px; }
   .log-time { font-size: 10px; }
 }
+
+/* Clear, clickable numbered pages for the Modrinth catalog. */
+
+.pagination-button.pagination-number { min-width: 34px; padding: 0 9px; }
+.pagination-button.pagination-number.active,
+.pagination-button.pagination-number[aria-current="page"] {
+  border-color: rgba(92, 190, 255, .5);
+  background: linear-gradient(145deg, rgba(37, 145, 255, .25), rgba(29, 105, 205, .14));
+  color: #effaff;
+  box-shadow: inset 0 0 0 1px rgba(105, 205, 255, .08);
+}
+.pagination-controls { flex-wrap: wrap; gap: 7px; }
