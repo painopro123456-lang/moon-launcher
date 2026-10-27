@@ -206,7 +206,7 @@ function renderGameLogs() {
 }
 
 function appendGameLog(message, level = "info") {
-  const clean = String(message || "").replace(/\\r/g, "").trimEnd();
+  const clean = String(message || "").trimEnd();
   if (!clean) return;
   state.gameLogs.push({ id: ++state.gameLogSequence, time: new Date().toLocaleTimeString([], { hour12: false }), level, message: clean });
   if (state.gameLogs.length > 3000) state.gameLogs.splice(0, state.gameLogs.length - 3000);
@@ -242,24 +242,24 @@ function handleLauncherProgress(progress) {
     else if (["closed", "error"].includes(progress.status)) { quickButton.textContent = "▶ Quick Play"; quickButton.disabled = !state.instances.some((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); }); delete quickButton.dataset.instanceId; }
     else { quickButton.textContent = progress.message || "Starting…"; quickButton.disabled = true; quickButton.dataset.instanceId = progress.instanceId; }
   }
-  const card = [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === progress.instanceId);
-  const button = card?.querySelector(".launch-button");
-  if (!button) return;
-  if (progress.status === "running") {
-    const instance = state.instances.find((item) => item.id === progress.instanceId);
-    if (instance) instance.installState = "installed";
+  const cards = [...document.querySelectorAll(".instance-card")].filter((item) => item.dataset.instanceId === progress.instanceId);
+  if (!cards.length) return;
+  const instance = state.instances.find((item) => item.id === progress.instanceId);
+  if (progress.status === "running" && instance) instance.installState = "installed";
+  for (const card of cards) {
+    const button = card.querySelector(".launch-button");
     const badge = card.querySelector(".instance-badge");
-    if (badge) badge.textContent = "Ready";
+    if (progress.status === "running" && badge) badge.textContent = "Ready";
+    if (!button) continue;
+    if (["closed", "error"].includes(progress.status)) {
+      button.disabled = false;
+      button.textContent = instance?.installState === "installed" ? "Play" : "Install & Play";
+    } else {
+      button.disabled = true;
+      button.textContent = progress.status === "running" ? "Minecraft running" : (progress.message || "Starting…");
+    }
   }
-  if (["closed", "error"].includes(progress.status)) {
-    button.disabled = false;
-    const instance = state.instances.find((item) => item.id === progress.instanceId);
-    button.textContent = instance?.installState === "installed" ? "Play" : "Install & Play";
-    if (progress.status === "error") showToast(progress.message || "Minecraft could not start.");
-    return;
-  }
-  button.disabled = true;
-  button.textContent = progress.status === "running" ? "Minecraft running" : (progress.message || "Starting…");
+  if (progress.status === "error") showToast(progress.message || "Minecraft could not start.");
 }
 
 function renderAccount(status) {
