@@ -8,7 +8,7 @@
           <TextBlock Text="NATIVE WINDOWS EDITION" FontSize="9" Foreground="{StaticResource MutedBrush}" Margin="2,0,0,28"/>
           <Button Content="Overview" Click="Overview_Click" Style="{StaticResource NavButton}"/>
           <Button Content="Minecraft versions" Click="Versions_Click" Style="{StaticResource NavButton}"/>
-          <Button Content="Instances" Click="Instances_Click" Style="{StaticResource NavButton}"/>
+          <Button Content="Installed Instances" Click="Instances_Click" Style="{StaticResource NavButton}"/>
           <Button Content="Settings" Click="Settings_Click" Style="{StaticResource NavButton}"/>
         </StackPanel>
         <TextBlock DockPanel.Dock="Bottom" Text="Electron-free build" Foreground="#75D7B2" FontSize="11" Margin="0,12,0,0"/>
@@ -20,7 +20,7 @@
         <TextBlock x:Name="PageTitle" Text="Welcome to Moon Launcher" FontSize="28" FontWeight="Bold"/>
         <TextBlock x:Name="PageSubtitle" Text="A lightweight native Windows shell for Minecraft Java Edition." Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"/>
       </StackPanel>
-      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer x:Name="HomeContent" Grid.Row="1" VerticalScrollBarVisibility="Auto">
         <StackPanel>
           <Border Background="#102947" BorderBrush="#285782" BorderThickness="1" CornerRadius="18" Padding="26" Margin="0,0,0,16">
             <StackPanel>
@@ -42,6 +42,16 @@
           </Border>
         </StackPanel>
       </ScrollViewer>
+      <Border x:Name="InstalledInstancesPanel" Grid.Row="1" Visibility="Collapsed" Background="{StaticResource PanelBrush}" CornerRadius="16" Padding="20" Margin="0,0,0,8">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <TextBlock Text="Your installed game profiles" FontSize="19" FontWeight="SemiBold"/>
+            <TextBlock Text="Modpacks you install appear here as separate instances." Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+            <Button Content="Refresh instances" Click="RefreshInstalledInstances_Click" HorizontalAlignment="Left" Padding="12,7" Margin="0,12,0,0"/>
+          </StackPanel>
+          <ListBox x:Name="InstalledInstancesList" Background="#081425" Foreground="{StaticResource TextBrush}" BorderThickness="0" Padding="8" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        </DockPanel>
+      </Border>
       <TextBlock Grid.Row="2" Text="MOON LAUNCHER  •  NATIVE WPF  •  WINDOWS x64" Foreground="#6D89AA" FontSize="9" Margin="0,16,0,0"/>
     </Grid>
 
