@@ -140,7 +140,33 @@ function renderInstances() {
       : "Install or launch this Minecraft instance.";
     launch.addEventListener("click", () => launchMinecraftInstance(instance.id, launch));
 
-    card.append(top, title, detail, launch);
+    const actions = document.createElement("div");
+    actions.className = "instance-actions";
+    const remove = document.createElement("button");
+    remove.className = "instance-delete-button";
+    remove.type = "button";
+    remove.textContent = "Delete";
+    remove.title = "Delete this instance and its instance-specific files";
+    remove.addEventListener("click", async () => {
+      const confirmed = confirm("Delete \"" + instance.name + "\"? This permanently removes this instance and its mods, configs, and instance-specific files. Shared Minecraft version files will be kept.");
+      if (!confirmed) return;
+      remove.disabled = true;
+      remove.textContent = "Deleting…";
+      try {
+        await api.deleteInstance(instance.id);
+        state.instances = state.instances.filter((item) => item.id !== instance.id);
+        if (state.modsInstanceId === instance.id) { state.modsInstanceId = ""; }
+        renderInstances();
+        refreshModsInstanceOptions();
+        showToast("Instance deleted.");
+      } catch (error) {
+        remove.disabled = false;
+        remove.textContent = "Delete";
+        showToast(error.message || "Could not delete this instance.");
+      }
+    });
+    actions.append(launch, remove);
+    card.append(top, title, detail, actions);
     host.append(card);
   }
 }
