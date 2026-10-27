@@ -106,7 +106,7 @@ function renderInstances() {
     return;
   }
 
-  $("#quick-play").disabled = !state.instances.some((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\\s])fabric-loader\\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); });
+  $("#quick-play").disabled = !state.instances.some((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); });
   for (const instance of state.instances) {
     const card = document.createElement("article");
     card.className = "instance-card";
@@ -133,7 +133,7 @@ function renderInstances() {
     launch.className = "launch-button";
     launch.textContent = instance.installState === "installed" ? "Play" : "Install & Play";
     const loaderName = String(instance.pack?.loader || "Vanilla");
-    const isUnsupportedLoaderPack = loaderName !== "Vanilla" && !/(?:^|[,\\s])fabric-loader\\s+[0-9][A-Za-z0-9.+_-]*/i.test(loaderName);
+    const isUnsupportedLoaderPack = loaderName !== "Vanilla" && !/(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loaderName);
     launch.disabled = isUnsupportedLoaderPack;
     launch.title = isUnsupportedLoaderPack
       ? "Forge/NeoForge packs are not supported yet. Vanilla and Fabric packs can launch."
@@ -163,7 +163,7 @@ function handleLauncherProgress(progress) {
   const quickButton = $("#quick-play");
   if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
     if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
-    else if (["closed", "error"].includes(progress.status)) { quickButton.textContent = "▶ Quick Play"; quickButton.disabled = !state.instances.some((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\\s])fabric-loader\\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); }); delete quickButton.dataset.instanceId; }
+    else if (["closed", "error"].includes(progress.status)) { quickButton.textContent = "▶ Quick Play"; quickButton.disabled = !state.instances.some((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); }); delete quickButton.dataset.instanceId; }
     else { quickButton.textContent = progress.message || "Starting…"; quickButton.disabled = true; quickButton.dataset.instanceId = progress.instanceId; }
   }
   const card = [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === progress.instanceId);
@@ -733,7 +733,7 @@ $("#logs-export").addEventListener("click", () => {
 });
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
 $("#quick-play").addEventListener("click", () => {
-  const instance = state.instances.find((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\\s])fabric-loader\\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); });
+  const instance = state.instances.find((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); });
   const card = instance && [...document.querySelectorAll(".instance-card")].find((item) => item.dataset.instanceId === instance.id);
   const launchButton = card?.querySelector(".launch-button");
   if (launchButton && !launchButton.disabled) { $("#quick-play").dataset.instanceId = instance.id; launchButton.click(); }
