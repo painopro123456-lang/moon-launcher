@@ -1289,25 +1289,40 @@ async function launchInstanceInternal(instanceId) {
 
   const account = await getUsableMinecraftAccount(id);
   reportLaunchProgress(id, "preparing", "Checking Minecraft files…");
-  const versionDetails = await fetchMinecraftVersionDetails(instance.minecraftVersion);
+  const minecraftVersion = String(instance.minecraftVersion ?? "").trim();
+  if (!minecraftVersion || minecraftVersion === "null" || minecraftVersion === "undefined") {
+    throw new Error("This instance has no valid Minecraft version saved. Edit or recreate the instance and select Minecraft 26.2 again.");
+  }
+  const versionDetails = await fetchMinecraftVersionDetails(minecraftVersion);
   const javaPath = await installJavaRuntime(versionDetails.javaMajor, id);
   const minecraftRoot = getMinecraftRootPath();
   const instanceDirectory = path.join(getInstancesPath(), id);
   await fs.mkdir(minecraftRoot, { recursive: true });
   await fs.mkdir(instanceDirectory, { recursive: true });
   const launchVersion = isFabricPack
-    ? await installFabricLoader(javaPath, minecraftRoot, instance.minecraftVersion, loader, id)
+    ? await installFabricLoader(javaPath, minecraftRoot, minecraftVersion, loader, id)
     : instance.minecraftVersion;
   const installedVersionDirectory = path.join(minecraftRoot, "versions", launchVersion);
   const installedVersionJson = path.join(installedVersionDirectory, launchVersion + ".json");
   const installedVersionJar = path.join(installedVersionDirectory, launchVersion + ".jar");
-  const minecraftAlreadyInstalled = await pathExists(installedVersionJson) && await pathExists(installedVersionJar);
+  let versionMetadata;
+  try {
+    versionMetadata = JSON.parse(await fs.readFile(installedVersionJson, "utf8"));
+  } catch {
+    versionMetadata = null;
+  }
+  // Do not hand launcher-core an incomplete profile. The profile ID, JSON ID and
+  // folder/file names must agree, otherwise newer version IDs can resolve to null.
+  if (!versionMetadata || versionMetadata.id !== launchVersion) {
+    throw new Error("Minecraft " + minecraftVersion + " has missing or invalid version metadata (" + launchVersion + "). Delete this instance's version files and retry so Moon Launcher can reinstall them.");
+  }
+  const minecraftAlreadyInstalled = await pathExists(installedVersionJar);
   reportLaunchProgress(
     id,
     minecraftAlreadyInstalled ? "preparing" : "downloading-game",
     minecraftAlreadyInstalled
-      ? "Minecraft " + instance.minecraftVersion + " is already installed. Skipping game-file verification…" 
-      : "Installing Minecraft " + instance.minecraftVersion + "…"
+      ? "Minecraft " + minecraftVersion + " is already installed. Skipping game-file verification…" 
+      : "Installing Minecraft " + minecraftVersion + "…"
   );
 
   const { Client } = require("minecraft-launcher-core");
