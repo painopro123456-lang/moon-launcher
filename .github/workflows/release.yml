@@ -21,7 +21,16 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Build and publish Windows installer
+      - name: Validate release version and updater configuration
+        shell: pwsh
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          if (-not $package.version) { throw "package.json is missing a version." }
+          if (-not $package.build.publish -or $package.build.publish[0].provider -ne "github") {
+            throw "electron-builder GitHub publish configuration is missing."
+          }
+          Write-Host "Building Moon Launcher version $($package.version)"
+      - name: Build and publish Windows installer and updater metadata
         run: npm run release:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
