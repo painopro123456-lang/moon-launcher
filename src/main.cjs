@@ -708,8 +708,8 @@ function sendWindowEvent(channel, payload) {
 function reportAuthProgress(status, message, details = {}) {
   sendWindowEvent("auth:progress", { status, message, ...details });
 }
-function reportLaunchProgress(instanceId, status, message) {
-  sendWindowEvent("launcher:progress", { instanceId, status, message });
+function reportLaunchProgress(instanceId, status, message, extra = {}) {
+  sendWindowEvent("launcher:progress", { instanceId, status, message, ...extra });
 }
 async function readMicrosoftClientId() {
   try {
@@ -1332,6 +1332,15 @@ async function launchInstance(instanceId) {
     throw new Error(error.message || "Minecraft could not start.");
   }
   activeLaunches.set(id, gameProcess);
+  const forwardMinecraftOutput = (chunk, logLevel) => {
+    const lines = String(chunk || "").split(/\\r?\\n/);
+    for (const line of lines) {
+      const message = line.trimEnd();
+      if (message) reportLaunchProgress(id, "game-log", message, { logLevel });
+    }
+  };
+  if (gameProcess.stdout) gameProcess.stdout.on("data", (chunk) => forwardMinecraftOutput(chunk, "info"));
+  if (gameProcess.stderr) gameProcess.stderr.on("data", (chunk) => forwardMinecraftOutput(chunk, "warning"));
   gameProcess.once("error", (error) => {
     activeLaunches.delete(id);
     reportLaunchProgress(id, "error", error.code === "ENOENT" ? "Java could not start." : "Minecraft failed to start.");
