@@ -851,6 +851,7 @@ $("#window-maximize").addEventListener("click", async () => {
 });
 $("#window-close").addEventListener("click", () => api.closeWindow());
 
+addLog("success", "Moon Launcher interface ready.");
 loadVersions();
 loadInstances();
 loadSettings();
