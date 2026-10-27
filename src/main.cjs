@@ -1333,7 +1333,7 @@ async function launchInstance(instanceId) {
   }
   activeLaunches.set(id, gameProcess);
   const forwardMinecraftOutput = (chunk, logLevel) => {
-    const lines = String(chunk || "").split(/\\r?\\n/);
+    const lines = String(chunk || "").split(/\r?\n/);
     for (const line of lines) {
       const message = line.trimEnd();
       if (message) reportLaunchProgress(id, "game-log", message, { logLevel });
