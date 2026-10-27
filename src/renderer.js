@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, logs: [], logSequence: 0 };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], gameLogs: [], gameLogSequence: 0, modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, logs: [], logSequence: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -75,7 +75,7 @@ function setCatalogState(online, message) {
 function setView(view) {
   state.view = view;
   if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);
-  if (view === "logs") renderLogs();
+  if (view === "instances") { renderInstancesInto("#installed-instance-list"); renderGameLogs(); }
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
@@ -84,7 +84,7 @@ function setView(view) {
   const titles = {
     home: ["YOUR GAME LIBRARY", "Welcome to Moon"],
     modpacks: ["BROWSE AND IMPORT", "Modpacks"],
-    logs: ["DIAGNOSTICS & ACTIVITY", "Launcher logs"],
+    instances: ["YOUR MINECRAFT LIBRARY", "Installed Instances"],
     mods: ["TUNE YOUR GAME", "Mod manager"],
     servers: ["MULTIPLAYER SHORTCUTS", "Server list"],
     settings: ["MAKE IT YOURS", "Settings"]
@@ -93,10 +93,12 @@ function setView(view) {
   $("#page-title").textContent = titles[view][1];
 }
 
-function renderInstances() {
-  const host = $("#instance-list");
+function renderInstancesInto(hostSelector) {
+  const host = $(hostSelector);
+  if (!host) return;
   host.replaceChildren();
-  $("#instance-count").textContent = String(state.instances.length);
+  const count = $(hostSelector === "#instance-list" ? "#instance-count" : "#installed-instance-count");
+  if (count) count.textContent = String(state.instances.length);
 
   if (state.instances.length === 0) {
     const empty = document.createElement("div");
@@ -171,7 +173,51 @@ function renderInstances() {
   }
 }
 
+function renderInstances() {
+  renderInstancesInto("#instance-list");
+  renderInstancesInto("#installed-instance-list");
+}
+
+function renderGameLogs() {
+  const host = $("#game-console-list");
+  if (!host) return;
+  host.replaceChildren();
+  if (!state.gameLogs.length) {
+    const empty = document.createElement("div");
+    empty.className = "game-console-empty";
+    empty.textContent = "Minecraft stdout and stderr will appear here when you launch the game.";
+    host.append(empty);
+    return;
+  }
+  for (const entry of state.gameLogs) {
+    const row = document.createElement("div");
+    row.className = "game-console-row";
+    const time = document.createElement("time");
+    time.textContent = entry.time;
+    const level = document.createElement("span");
+    level.className = "game-console-level game-console-level-" + entry.level;
+    level.textContent = entry.level.toUpperCase();
+    const message = document.createElement("pre");
+    message.textContent = entry.message;
+    row.append(time, level, message);
+    host.append(row);
+  }
+  host.scrollTop = host.scrollHeight;
+}
+
+function appendGameLog(message, level = "info") {
+  const clean = String(message || "").replace(/\\r/g, "").trimEnd();
+  if (!clean) return;
+  state.gameLogs.push({ id: ++state.gameLogSequence, time: new Date().toLocaleTimeString([], { hour12: false }), level, message: clean });
+  if (state.gameLogs.length > 3000) state.gameLogs.splice(0, state.gameLogs.length - 3000);
+  renderGameLogs();
+}
+
 async function launchMinecraftInstance(instanceId, button) {
+  state.gameLogs = [];
+  renderGameLogs();
+  setView("instances");
+  $("#game-console-status").textContent = "Starting Minecraft… waiting for game output.";
   button.disabled = true;
   button.textContent = "Preparing…";
   try {
@@ -185,7 +231,11 @@ async function launchMinecraftInstance(instanceId, button) {
 }
 
 function handleLauncherProgress(progress) {
-  addLog(progress.status === "error" ? "error" : progress.status === "closed" && /error/i.test(progress.message || "") ? "warning" : progress.status === "running" ? "success" : "info", progress.message || progress.status, "Minecraft");
+  if (progress.status === "game-log") { appendGameLog(progress.message, progress.logLevel || "info"); return; }
+  if (progress.status === "running") $("#game-console-status").textContent = "Minecraft is running · live stdout/stderr";
+  else if (progress.status === "closed") $("#game-console-status").textContent = progress.message || "Minecraft closed.";
+  else if (progress.status === "error") $("#game-console-status").textContent = progress.message || "Minecraft failed to start.";
+  else if (progress.status === "preparing" || progress.status === "downloading-game") $("#game-console-status").textContent = progress.message || "Preparing Minecraft…";
   const quickButton = $("#quick-play");
   if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
     if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
@@ -751,23 +801,14 @@ async function searchModpacks(page = 1) {
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
-$("#logs-search").addEventListener("input", renderLogs);
-$("#logs-level").addEventListener("change", renderLogs);
-$("#logs-clear").addEventListener("click", () => { state.logs = []; renderLogs(); addLog("info", "Log view cleared."); });
-$("#logs-copy").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText(exportVisibleLogs()); showToast("Visible logs copied."); }
+$("#game-console-clear").addEventListener("click", () => { state.gameLogs = []; renderGameLogs(); });
+$("#game-console-copy").addEventListener("click", async () => {
+  const output = state.gameLogs.map((entry) => "[" + entry.time + "] [" + entry.level.toUpperCase() + "] " + entry.message).join("\n");
+  try { await navigator.clipboard.writeText(output || "No Minecraft output captured."); showToast("Minecraft logs copied."); }
   catch { showToast("Clipboard access is unavailable."); }
 });
-$("#logs-export").addEventListener("click", () => {
-  const blob = new Blob([exportVisibleLogs()], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "moon-launcher-logs-" + new Date().toISOString().replace(/[:.]/g, "-") + ".txt";
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast("Log snapshot exported.");
-});
+$("#installed-new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
+$("#installed-import-pack").addEventListener("click", importPack);
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
 $("#quick-play").addEventListener("click", () => {
   const instance = state.instances.find((item) => { const loader = String(item.pack?.loader || "Vanilla"); return loader === "Vanilla" || /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader); });
