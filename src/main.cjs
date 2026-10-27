@@ -1242,7 +1242,7 @@ async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, lo
   await fs.writeFile(installerPath, installerBytes);
   // Use java.exe for the command-line Fabric installer so its diagnostics are captured.
   // The runtime path is normally javaw.exe, which can hide installer output on Windows.
-  const javaCommandPath = javaPath.replace(/javaw\\.exe$/i, "java.exe");
+  const javaCommandPath = javaPath.replace(/javaw\.exe$/i, "java.exe");
   const installerJavaPath = await pathExists(javaCommandPath) ? javaCommandPath : javaPath;
   reportLaunchProgress(instanceId, "installing-loader", "Running Fabric installer for Minecraft " + minecraftVersion + "…");
   const result = spawnSync(installerJavaPath, [
