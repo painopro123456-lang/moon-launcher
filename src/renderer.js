@@ -56,7 +56,7 @@ function renderLogs() {
 }
 function exportVisibleLogs() {
   const entries = visibleLogs();
-  const text = entries.map((entry) => "[" + entry.time.toISOString() + "] [" + entry.level.toUpperCase() + "] [" + entry.source + "] " + entry.message).join("\\n");
+  const text = entries.map((entry) => "[" + entry.time.toISOString() + "] [" + entry.level.toUpperCase() + "] [" + entry.source + "] " + entry.message).join("\n");
   return text || "Moon Launcher — no matching log entries.";
 }
 function showToast(message) {
@@ -74,15 +74,17 @@ function setCatalogState(online, message) {
 
 function setView(view) {
   state.view = view;
-  if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);\n  if (view === "logs") renderLogs();
-  addLog("success", "Moon Launcher interface ready.");\ndocument.querySelectorAll(".nav-item").forEach((button) => {
+  if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);
+  if (view === "logs") renderLogs();
+  document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
   document.querySelectorAll(".view").forEach((section) => section.classList.remove("active"));
   $("#" + view + "-view").classList.add("active");
   const titles = {
     home: ["YOUR GAME LIBRARY", "Welcome to Moon"],
-    modpacks: ["BROWSE AND IMPORT", "Modpacks"],\n    logs: ["DIAGNOSTICS & ACTIVITY", "Launcher logs"],
+    modpacks: ["BROWSE AND IMPORT", "Modpacks"],
+    logs: ["DIAGNOSTICS & ACTIVITY", "Launcher logs"],
     mods: ["TUNE YOUR GAME", "Mod manager"],
     servers: ["MULTIPLAYER SHORTCUTS", "Server list"],
     settings: ["MAKE IT YOURS", "Settings"]
@@ -155,7 +157,8 @@ async function launchMinecraftInstance(instanceId, button) {
   }
 }
 
-function handleLauncherProgress(progress) {\n  addLog(progress.status === "error" ? "error" : progress.status === "closed" && /error/i.test(progress.message || "") ? "warning" : progress.status === "running" ? "success" : "info", progress.message || progress.status, "Minecraft");
+function handleLauncherProgress(progress) {
+  addLog(progress.status === "error" ? "error" : progress.status === "closed" && /error/i.test(progress.message || "") ? "warning" : progress.status === "running" ? "success" : "info", progress.message || progress.status, "Minecraft");
   const quickButton = $("#quick-play");
   if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
     if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
@@ -299,7 +302,8 @@ async function cancelMicrosoftSignIn() {
   if ($("#auth-dialog").open) $("#auth-dialog").close();
 }
 
-api.onAuthProgress((progress) => {\n  if (progress.message) addLog(progress.status === "error" ? "error" : progress.status === "signed-in" ? "success" : "info", progress.message, "Account");
+api.onAuthProgress((progress) => {
+  if (progress.message) addLog(progress.status === "error" ? "error" : progress.status === "signed-in" ? "success" : "info", progress.message, "Account");
   if (progress.status === "starting") openAuthDialog();
   if (progress.status === "browser-login" || progress.status === "token-exchange") {
     $("#auth-status-message").textContent = progress.message || "Continue signing in through your browser…";
@@ -475,7 +479,8 @@ async function installModrinthPack(project, button, versionId) {
   }
 }
 
-api.onModpackProgress((progress) => {\n  if (progress.message) addLog("info", progress.message, "Modpacks");
+api.onModpackProgress((progress) => {
+  if (progress.message) addLog("info", progress.message, "Modpacks");
   if (!state.activeInstall || progress.projectId !== state.activeInstall.projectId) return;
   state.activeInstall.button.textContent = progress.message || "Installing…";
 });
