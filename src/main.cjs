@@ -1240,18 +1240,36 @@ async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, lo
   await fs.mkdir(downloadDirectory, { recursive: true });
   const installerPath = path.join(downloadDirectory, "fabric-installer-" + installerVersion + ".jar");
   await fs.writeFile(installerPath, installerBytes);
-  const result = spawnSync(javaPath, [
+  // Use java.exe for the command-line Fabric installer so its diagnostics are captured.
+  // The runtime path is normally javaw.exe, which can hide installer output on Windows.
+  const javaCommandPath = javaPath.replace(/javaw\\.exe$/i, "java.exe");
+  const installerJavaPath = await pathExists(javaCommandPath) ? javaCommandPath : javaPath;
+  reportLaunchProgress(instanceId, "installing-loader", "Running Fabric installer for Minecraft " + minecraftVersion + "…");
+  const result = spawnSync(installerJavaPath, [
     "-jar", installerPath, "client", "-dir", minecraftRoot,
     "-mcversion", minecraftVersion, "-loader", loaderVersion
   ], { encoding: "utf8", timeout: 180000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
+  if (result.stdout) {
+    for (const line of String(result.stdout).split(/\\r?\\n/).filter(Boolean)) {
+      reportLaunchProgress(instanceId, "game-log", "[Fabric] " + line, { logLevel: "info" });
+    }
+  }
+  if (result.stderr) {
+    for (const line of String(result.stderr).split(/\\r?\\n/).filter(Boolean)) {
+      reportLaunchProgress(instanceId, "game-log", "[Fabric] " + line, { logLevel: "warning" });
+    }
+  }
   if (result.error) {
-    if (result.error.code === "ETIMEDOUT") throw new Error("Fabric Loader installation timed out. Try again.");
+    if (result.error.code === "ETIMEDOUT") throw new Error("Fabric Loader installation timed out after 3 minutes. Check the Minecraft version and try again.");
     throw new Error("Could not run the Fabric installer: " + result.error.message);
   }
   if (result.status !== 0 || !(await pathExists(profilePath))) {
-    const detail = String(result.stderr || result.stdout || "").replace(/[\\r\\n]+/g, " ").trim().slice(-240);
-    throw new Error("Fabric Loader could not be installed." + (detail ? " " + detail : " Check the Logs page and try again."));
+    const detail = String(result.stderr || result.stdout || "").replace(/[\\r\\n]+/g, " ").trim().slice(-500);
+    const reason = detail || "Fabric did not create the expected launcher profile. This Minecraft version may not be supported by the selected Fabric Loader.";
+    reportLaunchProgress(instanceId, "game-log", "[Fabric] Installation failed: " + reason, { logLevel: "error" });
+    throw new Error("Fabric Loader could not be installed. " + reason);
   }
+  reportLaunchProgress(instanceId, "game-log", "[Fabric] Loader " + loaderVersion + " installed successfully.", { logLevel: "info" });
   return profileId;
 }
 
