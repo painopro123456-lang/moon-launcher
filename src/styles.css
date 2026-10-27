@@ -1543,6 +1543,7 @@ body {
 .field-label select:hover:not(:disabled) { border-color: rgba(82, 184, 255, .55); }
 .field-label select:focus-visible { border-color: #61c4ff; box-shadow: 0 0 0 3px rgba(64, 164, 255, .2); }
 .field-label select option, .field-label select optgroup { background: #0b2038; color: #eff8ff; }
+.setting-select select option, .setting-select select optgroup { background: #0b2038; color: #eff8ff; }
 .select-caret { border-color: #a2dfff; }
 .dialog {
   border-color: rgba(76, 172, 255, .28);
