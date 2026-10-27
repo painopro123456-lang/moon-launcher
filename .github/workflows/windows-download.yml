@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-windows:
-    name: Build original Electron Moon Launcher UI for Windows x64
+    name: Build native Moon Launcher for Windows x64
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -23,31 +23,31 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: 22
+          dotnet-version: 8.0.x
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Generate Windows app icon
+      - name: Build self-contained single-file WPF EXE
         shell: pwsh
         run: |
-          npm install --no-save sharp png-to-ico
-          node scripts/build-icon.cjs
-          if (-not (Test-Path "native/moon-icon.ico")) { throw "App icon was not generated." }
-
-      - name: Build Electron portable EXE and installer
-        run: npm run dist:win
-
-      - name: Verify outputs
-        shell: pwsh
-        run: |
+          dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist
           $exe = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
+          if (-not $exe -or $exe.Length -lt 1000000) { throw "Native Moon-Launcher.exe missing or unexpectedly small." }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found at $iscc" }
+          & $iscc "installer/MoonLauncher.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
           $setup = Get-Item "dist/Moon-Launcher-Setup.exe" -ErrorAction SilentlyContinue
-          if (-not $exe -or $exe.Length -lt 10000000) { throw "Portable Electron EXE missing or unexpectedly small." }
-          if (-not $setup -or $setup.Length -lt 10000000) { throw "Installer missing or unexpectedly small." }
+          if (-not $setup -or $setup.Length -lt 1000000) { throw "Moon-Launcher-Setup.exe missing or unexpectedly small." }
 
       - name: Upload EXE and installer as workflow artifact
         uses: actions/upload-artifact@v4
@@ -67,10 +67,8 @@ jobs:
           name: Moon Launcher — Latest Windows Build
           body: |
             **Moon Launcher for Windows x64**
-
-            This build uses the original Electron-based Moon Launcher interface.
-            - **Moon-Launcher-Setup.exe** — installer.
-            - **Moon-Launcher.exe** — portable version.
+            - **Moon-Launcher.exe** — portable native WPF app.
+            - **Moon-Launcher-Setup.exe** — Windows installer.
           files: |
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
