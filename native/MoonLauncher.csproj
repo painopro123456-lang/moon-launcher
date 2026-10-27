@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Moon-Launcher</AssemblyName>
-    <ApplicationIcon>native\moon-icon.ico</ApplicationIcon>
+    <ApplicationIcon>moon-icon.ico</ApplicationIcon>
     <RootNamespace>MoonLauncher</RootNamespace>
     <Version>0.2.0</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -16,7 +16,7 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
   <ItemGroup>
-    <Resource Include="native\moon-icon.ico" Link="moon-icon.ico" />
+    <Resource Include="moon-icon.ico" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 </Project>
