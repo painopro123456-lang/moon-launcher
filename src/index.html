@@ -21,6 +21,7 @@
       <nav class="navigation" aria-label="Main navigation">
         <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span>Home</button>
         <button class="nav-item" data-view="modpacks"><span class="nav-icon">▦</span>Modpacks</button>
+        <button class="nav-item" data-view="logs"><span class="nav-icon">≡</span>Logs</button>
         <button class="nav-item" data-view="mods"><span class="nav-icon">⌘</span>Mods</button>
         <button class="nav-item" data-view="servers"><span class="nav-icon">◎</span>Servers</button>
         <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
@@ -105,6 +106,26 @@
         </div>
         <div class="results-grid" id="modpack-results"></div>
         <div class="modpack-pagination" id="modpack-pagination" aria-label="Modpack result pages"></div>
+      </section>
+
+
+
+      <section class="view" id="logs-view">
+        <div class="page-intro logs-intro">
+          <div class="eyebrow">DIAGNOSTICS & ACTIVITY</div>
+          <h2>Launcher logs</h2>
+          <p>Track launcher activity and Minecraft startup progress. Filter messages, search details, or export a text snapshot.</p>
+        </div>
+        <div class="logs-toolbar">
+          <label class="search-box logs-search"><span>⌕</span><input id="logs-search" type="search" placeholder="Search log messages…" maxlength="160"></label>
+          <label class="select-wrap logs-filter"><select id="logs-level" aria-label="Filter log level"><option value="all">All levels</option><option value="info">Info</option><option value="success">Success</option><option value="warning">Warnings</option><option value="error">Errors</option></select><span class="select-caret"></span></label>
+          <button class="secondary-button" id="logs-copy">Copy visible</button>
+          <button class="secondary-button" id="logs-export">Export .txt</button>
+          <button class="text-button" id="logs-clear">Clear</button>
+        </div>
+        <div class="logs-summary" aria-live="polite"><div><span class="logs-live-dot"></span><strong>Live activity</strong><span class="logs-summary-note">This session</span></div><span id="logs-count">0 entries</span></div>
+        <div class="logs-panel"><div class="logs-panel-head"><span>TIME</span><span>LEVEL</span><span>MESSAGE</span></div><div id="logs-list" class="logs-list"><div class="logs-empty"><span class="logs-empty-icon">⌁</span><strong>No log entries yet</strong><p>Launcher events will appear here as you create instances, import packs, or start Minecraft.</p></div></div></div>
+        <p class="logs-footnote">Session logs are kept in memory and can be exported before closing the launcher.</p>
       </section>
 
       <section class="view" id="mods-view">
