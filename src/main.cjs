@@ -1345,8 +1345,11 @@ async function launchInstanceInternal(instanceId) {
       },
       root: minecraftRoot,
       version: { number: launchVersion, type: versionDetails.type },
-      // Skip update verification when the selected version metadata and client JAR already exist.
-      skipUpdate: minecraftAlreadyInstalled,
+      // Always let minecraft-launcher-core resolve/validate version metadata.
+      // Existing JSON/JAR files alone are not enough to prove the version profile is usable;
+      // stale or incomplete metadata caused "version is null" on affected versions.
+      // This also refreshes metadata for new Minecraft version IDs such as 26.2.
+      skipUpdate: false,
       javaPath: launchJavaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
       overrides: { gameDirectory: instanceDirectory, maxSockets: launcherPreferences.downloadConnections },
       window: { fullscreen: launcherPreferences.fullscreen }
