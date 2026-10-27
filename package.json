@@ -1,7 +1,7 @@
 {
   "name": "moon-launcher",
   "productName": "Moon Launcher",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "A Windows Minecraft launcher for managing versions, instances, and modpacks.",
   "main": "src/main.cjs",
@@ -58,8 +58,8 @@
       "createStartMenuShortcut": true
     },
     "portable": {
-      "artifactName": "Moon-Launcher.exe"
+      "artifactName": "Moon-Launcher-Portable-0.2.2.exe"
     },
-    "artifactName": "Moon-Launcher-Setup.exe"
+    "artifactName": "Moon-Launcher-Setup-0.2.2.exe"
   }
 }
