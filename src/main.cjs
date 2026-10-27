@@ -1247,7 +1247,7 @@ async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, lo
   reportLaunchProgress(instanceId, "installing-loader", "Running Fabric installer for Minecraft " + minecraftVersion + "…");
   const result = spawnSync(installerJavaPath, [
     "-jar", installerPath, "client", "-dir", minecraftRoot,
-    "-mcversion", minecraftVersion, "-loader", loaderVersion
+    "-mcversion", minecraftVersion, "-loader", loaderVersion, "-noprofile"
   ], { encoding: "utf8", timeout: 180000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
   if (result.stdout) {
     for (const line of String(result.stdout).split(/\\r?\\n/).filter(Boolean)) {
