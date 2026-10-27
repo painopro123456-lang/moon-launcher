@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require("electron");
+const { spawnSync } = require("node:child_process");
 const { autoUpdater } = require("electron-updater");
 const http = require("node:http");
 const os = require("node:os");
@@ -1194,6 +1195,49 @@ async function installJavaRuntime(javaMajor, instanceId) {
     throw error;
   }
 }
+async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, loader, instanceId) {
+  const match = String(loader || "").match(/fabric-loader\\s+([0-9][A-Za-z0-9.+_-]*)/i);
+  if (!match) throw new Error("This Fabric modpack does not specify a valid Fabric Loader version.");
+  const loaderVersion = match[1];
+  const profileId = "fabric-loader-" + loaderVersion + "-" + minecraftVersion;
+  const profilePath = path.join(minecraftRoot, "versions", profileId, profileId + ".json");
+  if (await pathExists(profilePath)) return profileId;
+
+  reportLaunchProgress(instanceId, "installing-loader", "Installing Fabric Loader " + loaderVersion + "…");
+  const metadataResponse = await fetch("https://meta.fabricmc.net/v2/versions/installer", {
+    headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(30000)
+  });
+  if (!metadataResponse.ok) throw new Error("Could not retrieve the official Fabric installer list (HTTP " + metadataResponse.status + ").");
+  const installers = await metadataResponse.json();
+  const installer = Array.isArray(installers) && (installers.find((item) => item.stable) || installers[0]);
+  if (!installer?.version) throw new Error("The official Fabric installer is currently unavailable.");
+  const installerVersion = String(installer.version);
+  if (!/^[0-9A-Za-z.+_-]{1,40}$/.test(installerVersion)) throw new Error("Fabric returned an invalid installer version.");
+  const installerUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-installer/" + encodeURIComponent(installerVersion) + "/fabric-installer-" + encodeURIComponent(installerVersion) + ".jar";
+  const installerResponse = await fetch(installerUrl, { headers: { "Accept": "application/java-archive" }, signal: AbortSignal.timeout(120000) });
+  if (!installerResponse.ok) throw new Error("Could not download the official Fabric installer (HTTP " + installerResponse.status + ").");
+  const installerBytes = await readLimitedResponse(installerResponse, 32 * 1024 * 1024);
+  if (installerBytes.subarray(0, 2).toString("hex") !== "504b") throw new Error("The Fabric installer download was not a valid JAR file.");
+
+  const downloadDirectory = path.join(minecraftRoot, "launcher-downloads");
+  await fs.mkdir(downloadDirectory, { recursive: true });
+  const installerPath = path.join(downloadDirectory, "fabric-installer-" + installerVersion + ".jar");
+  await fs.writeFile(installerPath, installerBytes);
+  const result = spawnSync(javaPath, [
+    "-jar", installerPath, "client", "-dir", minecraftRoot,
+    "-mcversion", minecraftVersion, "-loader", loaderVersion
+  ], { encoding: "utf8", timeout: 180000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
+  if (result.error) {
+    if (result.error.code === "ETIMEDOUT") throw new Error("Fabric Loader installation timed out. Try again.");
+    throw new Error("Could not run the Fabric installer: " + result.error.message);
+  }
+  if (result.status !== 0 || !(await pathExists(profilePath))) {
+    const detail = String(result.stderr || result.stdout || "").replace(/[\\r\\n]+/g, " ").trim().slice(-240);
+    throw new Error("Fabric Loader could not be installed." + (detail ? " " + detail : " Check the Logs page and try again."));
+  }
+  return profileId;
+}
+
 async function launchInstance(instanceId) {
   const id = String(instanceId || "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("This Minecraft instance is invalid.");
@@ -1202,7 +1246,11 @@ async function launchInstance(instanceId) {
   const instance = instances.find((item) => item.id === id);
   if (!instance) throw new Error("This Minecraft instance could not be found.");
   const loader = String(instance.pack?.loader || "Vanilla");
-  if (loader !== "Vanilla") throw new Error("This pack uses " + loader + ". Its files are installed, but mod loader installation is not connected yet.");
+  const isFabricPack = /(?:^|[,\s])fabric-loader\s+[0-9][A-Za-z0-9.+_-]*/i.test(loader);
+  const isVanillaPack = !loader || loader === "Vanilla";
+  if (!isVanillaPack && !isFabricPack) {
+    throw new Error("This pack uses " + loader + ". Moon Launcher can currently launch Vanilla and Fabric modpacks; Forge/NeoForge support is not available yet.");
+  }
 
   const account = await getUsableMinecraftAccount(id);
   reportLaunchProgress(id, "preparing", "Checking Minecraft files…");
@@ -1212,6 +1260,9 @@ async function launchInstance(instanceId) {
   const instanceDirectory = path.join(getInstancesPath(), id);
   await fs.mkdir(minecraftRoot, { recursive: true });
   await fs.mkdir(instanceDirectory, { recursive: true });
+  const launchVersion = isFabricPack
+    ? await installFabricLoader(javaPath, minecraftRoot, instance.minecraftVersion, loader, id)
+    : instance.minecraftVersion;
   reportLaunchProgress(id, "downloading-game", "Installing or updating Minecraft " + instance.minecraftVersion + "…");
 
   const { Client } = require("minecraft-launcher-core");
@@ -1242,7 +1293,7 @@ async function launchInstance(instanceId) {
           : { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
       },
       root: minecraftRoot,
-      version: { number: instance.minecraftVersion, type: versionDetails.type },
+      version: { number: launchVersion, type: versionDetails.type },
       javaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
       overrides: { gameDirectory: instanceDirectory, maxSockets: launcherPreferences.downloadConnections },
       window: { fullscreen: launcherPreferences.fullscreen }
