@@ -695,6 +695,7 @@ const MAX_JAVA_UNPACKED_BYTES = 1024 * 1024 * 1024;
 let authInProgress = false;
 let authCancelRequested = false;
 const activeLaunches = new Map();
+const pendingLaunches = new Set();
 
 function getMinecraftRootPath() { return path.join(launcherPreferences.gameDirectory, "minecraft"); }
 function getMicrosoftClientIdPath() { return path.join(app.getPath("userData"), "microsoft-client.json"); }
@@ -1254,7 +1255,7 @@ async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, lo
   return profileId;
 }
 
-async function launchInstance(instanceId) {
+async function launchInstanceInternal(instanceId) {
   const id = String(instanceId || "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("This Minecraft instance is invalid.");
   if (activeLaunches.has(id)) throw new Error("This Minecraft instance is already running.");
@@ -1357,6 +1358,21 @@ async function launchInstance(instanceId) {
   }
   reportLaunchProgress(id, "running", "Minecraft is running.");
   return { started: true, instanceId: id };
+}
+
+async function launchInstance(instanceId) {
+  const id = String(instanceId || "");
+  if (activeLaunches.has(id) || pendingLaunches.has(id)) {
+    throw new Error("This Minecraft instance is already running or starting.");
+  }
+  // Reserve the instance synchronously before any async setup work so rapid clicks
+  // cannot start two launch sequences for the same instance.
+  pendingLaunches.add(id);
+  try {
+    return await launchInstanceInternal(id);
+  } finally {
+    pendingLaunches.delete(id);
+  }
 }
 
 function readPackManifest(zipPath) {
