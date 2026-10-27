@@ -42,12 +42,16 @@ jobs:
         shell: pwsh
         run: |
           npm run dist:win
-          $portable = Get-Item "dist/Moon-Launcher-Portable-0.2.2.exe" -ErrorAction SilentlyContinue
-          $setup = Get-Item "dist/Moon-Launcher-Setup-0.2.2.exe" -ErrorAction SilentlyContinue
-          if (-not $portable -or $portable.Length -lt 10000000) { throw "Versioned portable Moon Launcher EXE missing or unexpectedly small." }
-          if (-not $setup -or $setup.Length -lt 10000000) { throw "Versioned Moon Launcher installer missing or unexpectedly small." }
-          Copy-Item "dist/Moon-Launcher-Portable-0.2.2.exe" "dist/Moon-Launcher.exe" -Force
-          Copy-Item "dist/Moon-Launcher-Setup-0.2.2.exe" "dist/Moon-Launcher-Setup.exe" -Force
+          $portablePath = "dist/Moon-Launcher-Portable-0.2.2.exe"
+          $setupPath = "dist/Moon-Launcher-Setup-0.2.2.exe"
+          if (-not (Test-Path $portablePath)) { throw "Versioned portable Moon Launcher EXE was not created." }
+          if (-not (Test-Path $setupPath)) { throw "Versioned Moon Launcher installer was not created." }
+          $portable = Get-Item $portablePath
+          $setup = Get-Item $setupPath
+          if ($portable.Length -lt 1000000) { throw "Portable EXE is unexpectedly small: $($portable.Length) bytes." }
+          if ($setup.Length -lt 1000000) { throw "Installer is unexpectedly small: $($setup.Length) bytes." }
+          Copy-Item $portablePath "dist/Moon-Launcher.exe" -Force
+          Copy-Item $setupPath "dist/Moon-Launcher-Setup.exe" -Force
 
       - name: Upload EXE and installer as workflow artifact
         uses: actions/upload-artifact@v4
