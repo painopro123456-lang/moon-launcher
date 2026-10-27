@@ -1263,7 +1263,17 @@ async function launchInstance(instanceId) {
   const launchVersion = isFabricPack
     ? await installFabricLoader(javaPath, minecraftRoot, instance.minecraftVersion, loader, id)
     : instance.minecraftVersion;
-  reportLaunchProgress(id, "downloading-game", "Installing or updating Minecraft " + instance.minecraftVersion + "…");
+  const installedVersionDirectory = path.join(minecraftRoot, "versions", launchVersion);
+  const installedVersionJson = path.join(installedVersionDirectory, launchVersion + ".json");
+  const installedVersionJar = path.join(installedVersionDirectory, launchVersion + ".jar");
+  const minecraftAlreadyInstalled = await pathExists(installedVersionJson) && await pathExists(installedVersionJar);
+  reportLaunchProgress(
+    id,
+    minecraftAlreadyInstalled ? "preparing" : "downloading-game",
+    minecraftAlreadyInstalled
+      ? "Minecraft " + instance.minecraftVersion + " is already installed. Skipping game-file verification…" 
+      : "Installing Minecraft " + instance.minecraftVersion + "…"
+  );
 
   const { Client } = require("minecraft-launcher-core");
   const launcher = new Client();
@@ -1294,6 +1304,8 @@ async function launchInstance(instanceId) {
       },
       root: minecraftRoot,
       version: { number: launchVersion, type: versionDetails.type },
+      // Skip update verification when the selected version metadata and client JAR already exist.
+      skipUpdate: minecraftAlreadyInstalled,
       javaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
       overrides: { gameDirectory: instanceDirectory, maxSockets: launcherPreferences.downloadConnections },
       window: { fullscreen: launcherPreferences.fullscreen }
