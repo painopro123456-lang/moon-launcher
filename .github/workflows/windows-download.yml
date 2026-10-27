@@ -42,8 +42,9 @@ jobs:
         shell: pwsh
         run: |
           npm run dist:win
-          $portablePath = "dist/Moon-Launcher-Portable-0.2.2.exe"
-          $setupPath = "dist/Moon-Launcher-Setup-0.2.2.exe"
+          $version = node -p "require('./package.json').version"
+          $portablePath = "dist/Moon-Launcher-Portable-$version.exe"
+          $setupPath = "dist/Moon-Launcher-Setup-$version.exe"
           if (-not (Test-Path $portablePath)) { throw "Versioned portable Moon Launcher EXE was not created." }
           if (-not (Test-Path $setupPath)) { throw "Versioned Moon Launcher installer was not created." }
           $portable = Get-Item $portablePath
@@ -58,8 +59,8 @@ jobs:
         with:
           name: Moon-Launcher-Windows-x64
           path: |
-            dist/Moon-Launcher-Portable-0.2.2.exe
-            dist/Moon-Launcher-Setup-0.2.2.exe
+            dist/Moon-Launcher-Portable-*.exe
+            dist/Moon-Launcher-Setup-*.exe
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
           if-no-files-found: error
@@ -73,12 +74,12 @@ jobs:
           name: Moon Launcher — Latest Windows Build
           body: |
             **Moon Launcher for Windows x64 — full UI/features build**
-            - **Moon-Launcher-Setup-0.2.2.exe** — fresh versioned Windows installer (use this to avoid stale cached downloads).
-            - **Moon-Launcher-Portable-0.2.2.exe** — fresh versioned portable app.
+            - **Moon-Launcher-Setup-$version.exe** — fresh versioned Windows installer.
+            - **Moon-Launcher-Portable-$version.exe** — fresh versioned portable app.
             - Stable-name aliases are also updated for compatibility.
           files: |
-            dist/Moon-Launcher-Portable-0.2.2.exe
-            dist/Moon-Launcher-Setup-0.2.2.exe
+            dist/Moon-Launcher-Portable-*.exe
+            dist/Moon-Launcher-Setup-*.exe
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
           overwrite_files: true
