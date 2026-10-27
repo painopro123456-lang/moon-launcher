@@ -1,13 +1,14 @@
 {
   "name": "moon-launcher",
   "productName": "Moon Launcher",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "A Windows Minecraft launcher for managing versions, instances, and modpacks.",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis portable --x64 --publish never"
+    "dist:win": "electron-builder --win nsis portable --x64 --publish never",
+    "release:win": "electron-builder --win nsis portable --x64 --publish always"
   },
   "engines": {
     "node": ">=22.16.0"
@@ -58,8 +59,16 @@
       "createStartMenuShortcut": true
     },
     "portable": {
-      "artifactName": "Moon-Launcher-Portable-0.2.2.exe"
+      "artifactName": "Moon-Launcher-Portable-${version}.${ext}"
     },
-    "artifactName": "Moon-Launcher-Setup-0.2.2.exe"
+    "artifactName": "Moon-Launcher-Setup-${version}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "painopro123456-lang",
+        "repo": "moon-launcher",
+        "releaseType": "release"
+      }
+    ]
   }
 }
