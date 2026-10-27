@@ -16,7 +16,7 @@ OutputBaseFilename=Moon-Launcher-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-SetupIconFile=..\\native\\moon-icon.ico
+SetupIconFile=..\native\moon-icon.ico
 ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
 UninstallDisplayName={#MyAppName}
@@ -31,9 +31,9 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "..\dist\Moon-Launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Moon Launcher"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\Moon Launcher"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{group}\Uninstall Moon Launcher"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Moon Launcher"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\Moon Launcher"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Moon Launcher"; Flags: postinstall nowait skipifsilent
