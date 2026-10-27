@@ -400,23 +400,34 @@ function renderModpackPagination() {
     : "No results";
   const controls = document.createElement("div");
   controls.className = "pagination-controls";
-  const previous = document.createElement("button");
-  previous.type = "button";
-  previous.className = "secondary-button pagination-button";
-  previous.textContent = "← Previous";
-  previous.disabled = state.modpackPage <= 1;
-  previous.addEventListener("click", () => searchModpacks(state.modpackPage - 1));
+
+  const addPageButton = (label, page, options = {}) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = options.active
+      ? "secondary-button pagination-button pagination-number active"
+      : "secondary-button pagination-button pagination-number";
+    button.textContent = label;
+    button.disabled = Boolean(options.disabled) || page === state.modpackPage;
+    if (options.active) button.setAttribute("aria-current", "page");
+    button.addEventListener("click", () => searchModpacks(page));
+    controls.append(button);
+  };
+
+  addPageButton("«", 1, { disabled: state.modpackPage <= 1 });
+  addPageButton("←", state.modpackPage - 1, { disabled: state.modpackPage <= 1 });
+  const startPage = Math.max(1, Math.min(state.modpackPage - 2, totalPages - 4));
+  const endPage = Math.min(totalPages, startPage + 4);
+  for (let page = startPage; page <= endPage; page++) {
+    addPageButton(String(page), page, { active: page === state.modpackPage });
+  }
+  addPageButton("→", state.modpackPage + 1, { disabled: state.modpackPage >= totalPages });
+  addPageButton("»", totalPages, { disabled: state.modpackPage >= totalPages });
+
   const pageLabel = document.createElement("span");
   pageLabel.className = "pagination-page";
   pageLabel.textContent = `Page ${state.modpackPage} of ${totalPages.toLocaleString()}`;
-  const next = document.createElement("button");
-  next.type = "button";
-  next.className = "secondary-button pagination-button";
-  next.textContent = "Next →";
-  next.disabled = state.modpackPage >= totalPages;
-  next.addEventListener("click", () => searchModpacks(state.modpackPage + 1));
-  controls.append(previous, pageLabel, next);
-  host.append(summary, controls);
+  host.append(summary, controls, pageLabel);
 }
 
 async function chooseModrinthPackVersion(project, sourceButton) {
