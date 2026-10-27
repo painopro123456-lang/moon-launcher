@@ -1346,9 +1346,15 @@ async function launchInstanceInternal(instanceId) {
       window: { fullscreen: launcherPreferences.fullscreen }
     });
   } catch (error) {
-    reportLaunchProgress(id, "error", "Minecraft could not start.");
-    if (error.code === "ENOENT") throw new Error("Java could not start. Try reinstalling this instance's Java runtime.");
-    throw new Error(error.message || "Minecraft could not start.");
+    reportLaunchProgress(id, "error", "Minecraft could not start: " + (error?.message || String(error)));
+    if (error?.code === "ENOENT") throw new Error("Java could not start. Try reinstalling this instance's Java runtime.");
+    throw new Error(error?.message || "Minecraft could not start.");
+  }
+  // Some launcher-core failure paths can resolve without returning a child process.
+  // Guard before reading stdout/stderr so the renderer receives a useful launch error.
+  if (!gameProcess || typeof gameProcess !== "object") {
+    reportLaunchProgress(id, "error", "Minecraft launcher did not return a process. Check the selected Minecraft version and its installed version metadata.");
+    throw new Error("Minecraft launcher did not return a process (launch result was null). Check the selected Minecraft version and try reinstalling the instance.");
   }
   activeLaunches.set(id, gameProcess);
   const forwardMinecraftOutput = (chunk, logLevel) => {
