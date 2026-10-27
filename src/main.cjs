@@ -1196,7 +1196,7 @@ async function installJavaRuntime(javaMajor, instanceId) {
   }
 }
 async function installFabricLoader(javaPath, minecraftRoot, minecraftVersion, loader, instanceId) {
-  const match = String(loader || "").match(/fabric-loader\\s+([0-9][A-Za-z0-9.+_-]*)/i);
+  const match = String(loader || "").match(/fabric-loader\s+([0-9][A-Za-z0-9.+_-]*)/i);
   if (!match) throw new Error("This Fabric modpack does not specify a valid Fabric Loader version.");
   const loaderVersion = match[1];
   const profileId = "fabric-loader-" + loaderVersion + "-" + minecraftVersion;
