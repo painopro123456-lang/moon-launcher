@@ -172,6 +172,22 @@ async function writeInstances(instances) {
   await fs.rename(temporaryPath, statePath);
 }
 
+async function deleteInstance(instanceId) {
+  const id = String(instanceId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Choose a valid Minecraft instance.");
+  if (activeLaunches.has(id)) throw new Error("Close Minecraft before deleting this instance.");
+  const instances = await readInstances();
+  const instance = instances.find((item) => item.id === id);
+  if (!instance) throw new Error("That Minecraft instance could not be found.");
+  const instancesRoot = path.resolve(getInstancesPath());
+  const instanceDirectory = path.resolve(instancesRoot, id);
+  if (path.dirname(instanceDirectory) !== instancesRoot || path.basename(instanceDirectory) !== id) {
+    throw new Error("The instance data path is invalid.");
+  }
+  await fs.rm(instanceDirectory, { recursive: true, force: true });
+  await writeInstances(instances.filter((item) => item.id !== id));
+  return { deleted: true, instanceId: id };
+}
 async function fetchVersions() {
   const response = await fetch(MANIFEST_URL, { headers: { "Accept": "application/json" } });
   if (!response.ok) throw new Error("Minecraft version catalog returned HTTP " + response.status);
@@ -1615,6 +1631,7 @@ ipcMain.handle("updates:install", () => {
 });
 ipcMain.handle("versions:list", fetchVersions);
 ipcMain.handle("instances:list", readInstances);
+ipcMain.handle("instances:delete", (_event, instanceId) => deleteInstance(instanceId));
 ipcMain.handle("instances:create", (_event, input) => createInstance(input || {}));
 ipcMain.handle("modpacks:import", importModpack);
 ipcMain.handle("modpacks:search", (_event, query) => searchModpacks(query));
