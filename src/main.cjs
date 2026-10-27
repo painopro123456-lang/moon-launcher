@@ -1312,6 +1312,12 @@ async function launchInstanceInternal(instanceId) {
 
   const { Client } = require("minecraft-launcher-core");
   const launcher = new Client();
+  // minecraft-launcher-core attaches listeners to the child process streams.
+  // javaw.exe intentionally has no console streams on Windows, which can cause
+  // "Cannot read properties of null (reading 'stdout')" during launch. Prefer
+  // the matching java.exe when available so stdout/stderr exist for diagnostics.
+  const consoleJavaPath = javaPath.replace(/javaw\.exe$/i, "java.exe");
+  const launchJavaPath = await pathExists(consoleJavaPath) ? consoleJavaPath : javaPath;
   let lastProgressAt = 0;
   launcher.on("progress", () => {
     const now = Date.now();
@@ -1341,7 +1347,7 @@ async function launchInstanceInternal(instanceId) {
       version: { number: launchVersion, type: versionDetails.type },
       // Skip update verification when the selected version metadata and client JAR already exist.
       skipUpdate: minecraftAlreadyInstalled,
-      javaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
+      javaPath: launchJavaPath, memory: { min: "1G", max: maximumMemoryGb + "G" },
       overrides: { gameDirectory: instanceDirectory, maxSockets: launcherPreferences.downloadConnections },
       window: { fullscreen: launcherPreferences.fullscreen }
     });
