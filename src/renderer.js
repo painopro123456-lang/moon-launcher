@@ -1,8 +1,64 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, logs: [], logSequence: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 
+function addLog(level, message, source = "Launcher") {
+  const clean = String(message || "").trim();
+  if (!clean) return;
+  state.logs.push({ id: ++state.logSequence, time: new Date(), level, source, message: clean });
+  if (state.logs.length > 1500) state.logs.splice(0, state.logs.length - 1500);
+  renderLogs();
+}
+function visibleLogs() {
+  const query = ($("#logs-search")?.value || "").trim().toLowerCase();
+  const level = $("#logs-level")?.value || "all";
+  return state.logs.filter((entry) => (level === "all" || entry.level === level) &&
+    (!query || (entry.message + " " + entry.source + " " + entry.level).toLowerCase().includes(query)));
+}
+function renderLogs() {
+  const host = $("#logs-list");
+  if (!host) return;
+  const entries = visibleLogs();
+  $("#logs-count").textContent = entries.length + (entries.length === 1 ? " entry" : " entries");
+  host.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "logs-empty";
+    const title = document.createElement("strong");
+    title.textContent = state.logs.length ? "No matching entries" : "No log entries yet";
+    const detail = document.createElement("p");
+    detail.textContent = state.logs.length ? "Try another search or level filter." : "Launcher activity will appear here as you use Moon Launcher.";
+    empty.append(title, detail);
+    host.append(empty);
+    return;
+  }
+  for (const entry of [...entries].reverse()) {
+    const row = document.createElement("div");
+    row.className = "log-row";
+    const time = document.createElement("time");
+    time.className = "log-time";
+    time.dateTime = entry.time.toISOString();
+    time.textContent = entry.time.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const level = document.createElement("span");
+    level.className = "log-level log-level-" + entry.level;
+    level.textContent = entry.level.toUpperCase();
+    const message = document.createElement("div");
+    message.className = "log-message";
+    const text = document.createElement("span");
+    text.textContent = entry.message;
+    const source = document.createElement("small");
+    source.textContent = entry.source;
+    message.append(text, source);
+    row.append(time, level, message);
+    host.append(row);
+  }
+}
+function exportVisibleLogs() {
+  const entries = visibleLogs();
+  const text = entries.map((entry) => "[" + entry.time.toISOString() + "] [" + entry.level.toUpperCase() + "] [" + entry.source + "] " + entry.message).join("\\n");
+  return text || "Moon Launcher — no matching log entries.";
+}
 function showToast(message) {
   const toast = $("#toast");
   toast.textContent = message;
@@ -18,15 +74,15 @@ function setCatalogState(online, message) {
 
 function setView(view) {
   state.view = view;
-  if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);
-  document.querySelectorAll(".nav-item").forEach((button) => {
+  if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);\n  if (view === "logs") renderLogs();
+  addLog("success", "Moon Launcher interface ready.");\ndocument.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
   document.querySelectorAll(".view").forEach((section) => section.classList.remove("active"));
   $("#" + view + "-view").classList.add("active");
   const titles = {
     home: ["YOUR GAME LIBRARY", "Welcome to Moon"],
-    modpacks: ["BROWSE AND IMPORT", "Modpacks"],
+    modpacks: ["BROWSE AND IMPORT", "Modpacks"],\n    logs: ["DIAGNOSTICS & ACTIVITY", "Launcher logs"],
     mods: ["TUNE YOUR GAME", "Mod manager"],
     servers: ["MULTIPLAYER SHORTCUTS", "Server list"],
     settings: ["MAKE IT YOURS", "Settings"]
@@ -99,7 +155,7 @@ async function launchMinecraftInstance(instanceId, button) {
   }
 }
 
-function handleLauncherProgress(progress) {
+function handleLauncherProgress(progress) {\n  addLog(progress.status === "error" ? "error" : progress.status === "closed" && /error/i.test(progress.message || "") ? "warning" : progress.status === "running" ? "success" : "info", progress.message || progress.status, "Minecraft");
   const quickButton = $("#quick-play");
   if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
     if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
@@ -243,7 +299,7 @@ async function cancelMicrosoftSignIn() {
   if ($("#auth-dialog").open) $("#auth-dialog").close();
 }
 
-api.onAuthProgress((progress) => {
+api.onAuthProgress((progress) => {\n  if (progress.message) addLog(progress.status === "error" ? "error" : progress.status === "signed-in" ? "success" : "info", progress.message, "Account");
   if (progress.status === "starting") openAuthDialog();
   if (progress.status === "browser-login" || progress.status === "token-exchange") {
     $("#auth-status-message").textContent = progress.message || "Continue signing in through your browser…";
@@ -419,7 +475,7 @@ async function installModrinthPack(project, button, versionId) {
   }
 }
 
-api.onModpackProgress((progress) => {
+api.onModpackProgress((progress) => {\n  if (progress.message) addLog("info", progress.message, "Modpacks");
   if (!state.activeInstall || progress.projectId !== state.activeInstall.projectId) return;
   state.activeInstall.button.textContent = progress.message || "Installing…";
 });
@@ -651,6 +707,23 @@ async function searchModpacks(page = 1) {
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
+});
+$("#logs-search").addEventListener("input", renderLogs);
+$("#logs-level").addEventListener("change", renderLogs);
+$("#logs-clear").addEventListener("click", () => { state.logs = []; renderLogs(); addLog("info", "Log view cleared."); });
+$("#logs-copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(exportVisibleLogs()); showToast("Visible logs copied."); }
+  catch { showToast("Clipboard access is unavailable."); }
+});
+$("#logs-export").addEventListener("click", () => {
+  const blob = new Blob([exportVisibleLogs()], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "moon-launcher-logs-" + new Date().toISOString().replace(/[:.]/g, "-") + ".txt";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("Log snapshot exported.");
 });
 $("#new-instance").addEventListener("click", () => $("#instance-dialog").showModal());
 $("#quick-play").addEventListener("click", () => {
