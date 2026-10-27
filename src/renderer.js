@@ -235,7 +235,7 @@ function handleLauncherProgress(progress) {
   if (progress.status === "running") $("#game-console-status").textContent = "Minecraft is running · live stdout/stderr";
   else if (progress.status === "closed") $("#game-console-status").textContent = progress.message || "Minecraft closed.";
   else if (progress.status === "error") $("#game-console-status").textContent = progress.message || "Minecraft failed to start.";
-  else if (progress.status === "preparing" || progress.status === "downloading-game") $("#game-console-status").textContent = progress.message || "Preparing Minecraft…";
+  else if (progress.status === "preparing" || progress.status === "downloading-game" || progress.status === "installing-java" || progress.status === "downloading-java" || progress.status === "installing-loader") $("#game-console-status").textContent = progress.message || "Preparing Minecraft…";
   const quickButton = $("#quick-play");
   if (state.instances[0]?.id === progress.instanceId || quickButton.dataset.instanceId === progress.instanceId) {
     if (progress.status === "running") { quickButton.textContent = "Minecraft running"; quickButton.disabled = true; }
