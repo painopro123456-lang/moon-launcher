@@ -1625,12 +1625,16 @@ async function resetCustomBackground() {
 }
 
 
+// electron-updater is supported by the installed NSIS build. Portable builds
+// can check for updates, but should not promise automatic in-place installation.
 autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.allowPrerelease = false;
+autoUpdater.allowDowngrade = false;
+autoUpdater.allowElevation = true;
 
 function sendUpdateStatus(status) {
-  if (mainWindow && !mainWindow.isDestroyed()) {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
     mainWindow.webContents.send("updates:status", status);
   }
 }
@@ -1675,6 +1679,9 @@ async function checkForLauncherUpdates() {
 ipcMain.handle("updates:check", checkForLauncherUpdates);
 ipcMain.handle("updates:install", () => {
   if (!app.isPackaged) throw new Error("Install updates from a packaged build.");
+  if (process.env.PORTABLE_EXECUTABLE_FILE || process.env.PORTABLE_EXECUTABLE_DIR) {
+    throw new Error("Automatic updates are supported by the installed Moon Launcher setup build. Download the latest installer from GitHub to update this portable copy.");
+  }
   autoUpdater.quitAndInstall(false, true);
   return true;
 });
