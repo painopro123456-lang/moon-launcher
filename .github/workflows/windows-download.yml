@@ -42,16 +42,20 @@ jobs:
         shell: pwsh
         run: |
           npm run dist:win
-          $portable = Get-Item "dist/Moon-Launcher.exe" -ErrorAction SilentlyContinue
-          $setup = Get-Item "dist/Moon-Launcher-Setup.exe" -ErrorAction SilentlyContinue
-          if (-not $portable -or $portable.Length -lt 10000000) { throw "Portable Moon Launcher EXE missing or unexpectedly small." }
-          if (-not $setup -or $setup.Length -lt 10000000) { throw "Moon Launcher installer missing or unexpectedly small." }
+          $portable = Get-Item "dist/Moon-Launcher-Portable-0.2.2.exe" -ErrorAction SilentlyContinue
+          $setup = Get-Item "dist/Moon-Launcher-Setup-0.2.2.exe" -ErrorAction SilentlyContinue
+          if (-not $portable -or $portable.Length -lt 10000000) { throw "Versioned portable Moon Launcher EXE missing or unexpectedly small." }
+          if (-not $setup -or $setup.Length -lt 10000000) { throw "Versioned Moon Launcher installer missing or unexpectedly small." }
+          Copy-Item "dist/Moon-Launcher-Portable-0.2.2.exe" "dist/Moon-Launcher.exe" -Force
+          Copy-Item "dist/Moon-Launcher-Setup-0.2.2.exe" "dist/Moon-Launcher-Setup.exe" -Force
 
       - name: Upload EXE and installer as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: Moon-Launcher-Windows-x64
           path: |
+            dist/Moon-Launcher-Portable-0.2.2.exe
+            dist/Moon-Launcher-Setup-0.2.2.exe
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
           if-no-files-found: error
@@ -65,9 +69,12 @@ jobs:
           name: Moon Launcher — Latest Windows Build
           body: |
             **Moon Launcher for Windows x64 — full UI/features build**
-            - **Moon-Launcher.exe** — portable app.
-            - **Moon-Launcher-Setup.exe** — Windows installer.
+            - **Moon-Launcher-Setup-0.2.2.exe** — fresh versioned Windows installer (use this to avoid stale cached downloads).
+            - **Moon-Launcher-Portable-0.2.2.exe** — fresh versioned portable app.
+            - Stable-name aliases are also updated for compatibility.
           files: |
+            dist/Moon-Launcher-Portable-0.2.2.exe
+            dist/Moon-Launcher-Setup-0.2.2.exe
             dist/Moon-Launcher.exe
             dist/Moon-Launcher-Setup.exe
           overwrite_files: true
