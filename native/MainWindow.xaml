@@ -1,4 +1,4 @@
-<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Height="720" Width="1120" MinHeight="600" MinWidth="900" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+<Window x:Class="MoonLauncher.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Moon Launcher" Icon="moon-icon.ico" Height="720" Width="1120" MinHeight="600" MinWidth="900" Background="{StaticResource PageBrush}" Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
   <Grid Margin="22">
     <Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <Border Grid.Column="0" Background="#09172A" CornerRadius="18" Padding="18" Margin="0,0,18,0">
