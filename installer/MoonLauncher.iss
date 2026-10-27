@@ -37,3 +37,7 @@ Name: "{autodesktop}\Moon Launcher"; Filename: "{app}\{#MyAppExeName}"; Tasks: d
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Moon Launcher"; Flags: postinstall nowait skipifsilent
+[UninstallDelete]
+; Remove Moon Launcher's per-user profiles, installed modpacks, settings, caches and saved account data.
+; This ensures a reinstall starts with a clean MoonLauncher data directory.
+Type: filesandordirs; Name: "{localappdata}\\MoonLauncher"
