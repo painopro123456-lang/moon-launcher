@@ -1573,7 +1573,8 @@ autoUpdater.on("update-downloaded", (info) => sendUpdateStatus({
 }));
 autoUpdater.on("error", (error) => {
   console.error("Moon Launcher update check failed:", error);
-  sendUpdateStatus({ state: "error", message: "Could not check for updates. Try again later." });
+  const detail = String(error?.message || "Unknown updater error").replace(/[\\r\\n]+/g, " ").slice(0, 220);
+  sendUpdateStatus({ state: "error", message: "Update check failed: " + detail });
 });
 
 async function checkForLauncherUpdates() {
@@ -1587,7 +1588,8 @@ async function checkForLauncherUpdates() {
     return { state: "checking", message: "Checking for updates…" };
   } catch (error) {
     console.error("Moon Launcher update check failed:", error);
-    const result = { state: "error", message: "Could not check for updates. Check your internet connection and try again." };
+    const detail = String(error?.message || "Unknown updater error").replace(/[\\r\\n]+/g, " ").slice(0, 220);
+    const result = { state: "error", message: "Update check failed: " + detail };
     sendUpdateStatus(result);
     return result;
   }
