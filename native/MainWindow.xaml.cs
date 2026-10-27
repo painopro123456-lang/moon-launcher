@@ -77,6 +77,8 @@ public partial class MainWindow : Window
 
     private void ShowPanel(string panel)
     {
+        HomeContent.Visibility = panel == "instances" ? Visibility.Collapsed : Visibility.Visible;
+        InstalledInstancesPanel.Visibility = panel == "instances" ? Visibility.Visible : Visibility.Collapsed;
         OverviewHero.Visibility = panel == "home" ? Visibility.Visible : Visibility.Collapsed;
         WorkspacePanel.Visibility = panel == "home" || panel == "versions" ? Visibility.Visible : Visibility.Collapsed;
         OverviewStats.Visibility = panel == "home" ? Visibility.Visible : Visibility.Collapsed;
@@ -85,6 +87,7 @@ public partial class MainWindow : Window
         ModsPanel.Visibility = panel == "mods" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = panel == "settings" ? Visibility.Visible : Visibility.Collapsed;
         VersionsList.Visibility = panel == "versions" ? Visibility.Visible : Visibility.Collapsed;
+        if (panel == "instances") RefreshInstalledInstances();
     }
 
     private void SetPage(string title, string subtitle, string status, string panel = "home")
@@ -97,7 +100,21 @@ public partial class MainWindow : Window
 
     private void Overview_Click(object sender, RoutedEventArgs e) => SetPage("Welcome to Moon", "Your Minecraft library, without the extra weight.", "Ready. Browse Modrinth modpacks, load the official version catalog, or create a local profile.");
     private void Versions_Click(object sender, RoutedEventArgs e) => SetPage("Minecraft versions", "Official Mojang version manifest.", "Load the catalog to see available releases and snapshots.", "versions");
-    private void Instances_Click(object sender, RoutedEventArgs e) => SetPage("Instances", "Local launcher profiles stored in your Windows user profile.", $"{ReadInstances().Count} instance(s) found.");
+    private void Instances_Click(object sender, RoutedEventArgs e) => SetPage("Installed Instances", "Every installed modpack gets its own separate profile.", $"{ReadInstances().Count} installed instance(s) found.", "instances");
+
+    private void RefreshInstalledInstances_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshInstalledInstances();
+        StatusText.Text = $"Refreshed. {ReadInstances().Count} installed instance(s) found.";
+    }
+
+    private void RefreshInstalledInstances()
+    {
+        var instances = ReadInstances();
+        InstalledInstancesList.ItemsSource = instances.Select(instance =>
+            $"{instance.Name}\nMinecraft {instance.Version}  •  Installed {instance.CreatedAt.LocalDateTime:g}\nInstance ID: {instance.Id}").ToList();
+        InstanceCount.Text = $"{instances.Count} instances";
+    }
     private void Modpacks_Click(object sender, RoutedEventArgs e) => SetPage("Modpacks", "Find a pack, install it into its own isolated profile, and keep its files separate.", "Search Modrinth or import a .mrpack file to create a dedicated profile.", "modpacks");
     private void Mods_Click(object sender, RoutedEventArgs e) => SetPage("Mods", "Manage mods for your local Minecraft setup.", "Full instance-aware mod management is still being ported.", "mods");
     private void Servers_Click(object sender, RoutedEventArgs e) => SetPage("Servers", "Keep your multiplayer addresses handy.", "Server shortcuts are saved locally on this PC.", "servers");
