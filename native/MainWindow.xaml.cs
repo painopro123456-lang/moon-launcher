@@ -340,7 +340,7 @@ public partial class MainWindow : Window
             instances.Add(new InstanceEntry(id, name, version, DateTimeOffset.UtcNow));
             File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
             RefreshInstances();
-            StatusText.Text = $"Installed “{name}” into {destination}. Downloaded {count} file(s). Loader metadata and game files are recorded, but Moon Launcher’s game launch pipeline is not finished yet.";
+            SetPage("Installed Instances", "Your installed modpacks are listed here.", $"Files are ready for “{name}”. Downloaded {count} file(s). Minecraft launching is not implemented in this build yet.", "instances");
         }
         catch
         {
