@@ -1522,7 +1522,7 @@ async function importModpack() {
 async function searchModpacks(input) {
   const options = input && typeof input === "object" ? input : { query: input };
   const query = String(options.query || "").slice(0, 100);
-  const page = Math.max(1, Math.min(5000, Math.floor(Number(options.page) || 1)));
+  const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
   const limit = 20;
   const params = new URLSearchParams({
     query,
@@ -1570,7 +1570,7 @@ async function findInstance(instanceId) {
 async function searchMods(input = {}) {
   const options = input && typeof input === "object" ? input : { query: input };
   const query = String(options.query || "").slice(0, 100);
-  const page = Math.max(1, Math.min(5000, Math.floor(Number(options.page) || 1)));
+  const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
   const limit = 20;
   const params = new URLSearchParams({ query, facets: '[ ["project_type:mod"] ]'.replace(/ /g, ""), limit: String(limit), offset: String((page - 1) * limit), index: "downloads" });
   const data = await fetchModrinthJson(MODRINTH_API + "/search?" + params.toString());
