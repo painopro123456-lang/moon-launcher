@@ -36,6 +36,27 @@ public sealed class MicrosoftAuthService
         catch { return null; }
     }
 
+    public sealed record LaunchCredentials(string Username, string Uuid, string AccessToken, long ExpiresAt);
+
+    public LaunchCredentials? GetLaunchCredentials()
+    {
+        try
+        {
+            var protectedBytes = File.ReadAllBytes(_accountPath);
+            var clear = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
+            using var doc = JsonDocument.Parse(clear);
+            var root = doc.RootElement;
+            var profile = root.GetProperty("profile");
+            var token = root.GetProperty("minecraftAccessToken").GetString();
+            var expiresAt = root.TryGetProperty("expiresAt", out var expiry) ? expiry.GetInt64() : 0;
+            if (string.IsNullOrWhiteSpace(token) || expiresAt <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) return null;
+            return new LaunchCredentials(
+                profile.GetProperty("name").GetString() ?? "Minecraft player",
+                profile.GetProperty("id").GetString() ?? "", token, expiresAt);
+        }
+        catch { return null; }
+    }
+
     public async Task<Account> SignInAsync(CancellationToken cancellationToken = default)
     {
         var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
