@@ -682,12 +682,14 @@ async function loadModsForSelectedInstance() {
   const host = $("#mods-list");
   host.replaceChildren();
   if (!selectedId) {
+    $("#local-mods-count").textContent = "0 mods";
     const empty = document.createElement("div"); empty.className = "empty-card"; empty.textContent = "Create an instance first to manage its mods."; host.append(empty); return;
   }
   const loading = document.createElement("div"); loading.className = "search-message"; loading.textContent = "Loading instance mods…"; host.append(loading);
   try {
     const result = await api.listInstanceMods(selectedId);
     host.replaceChildren();
+    $("#local-mods-count").textContent = result.mods.length + (result.mods.length === 1 ? " mod" : " mods");
     if (!result.mods.length) {
       const empty = document.createElement("div"); empty.className = "empty-card"; empty.textContent = "No .jar mods found. Add mod files to this instance's mods folder, then refresh."; host.append(empty); return;
     }
