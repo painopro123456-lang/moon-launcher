@@ -1544,7 +1544,7 @@ async function searchModpacks(input) {
   const options = input && typeof input === "object" ? input : { query: input };
   const query = String(options.query || "").slice(0, 100);
   const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
-  const limit = 20;
+  const limit = 30;
   const params = new URLSearchParams({
     query,
     facets: '[["project_type:modpack"]]',
@@ -1592,7 +1592,7 @@ async function searchMods(input = {}) {
   const options = input && typeof input === "object" ? input : { query: input };
   const query = String(options.query || "").slice(0, 100);
   const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
-  const limit = 20;
+  const limit = 30;
   const params = new URLSearchParams({ query, facets: '[ ["project_type:mod"] ]'.replace(/ /g, ""), limit: String(limit), offset: String((page - 1) * limit), index: "downloads" });
   const data = await fetchModrinthJson(MODRINTH_API + "/search?" + params.toString());
   return { projects: (data.hits || []).map((project) => ({ id: String(project.project_id || ""), slug: String(project.slug || ""), title: String(project.title || "Untitled mod"), description: String(project.description || ""), iconUrl: String(project.icon_url || ""), downloads: Number(project.downloads) || 0, categories: Array.isArray(project.categories) ? project.categories : [] })), total: Number(data.total) || 0, page, pageSize: limit };
