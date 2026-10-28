@@ -466,7 +466,7 @@ function renderModpackPagination() {
   const host = $("#modpack-pagination");
   if (!host) return;
   host.replaceChildren();
-  const pageSize = 20;
+  const pageSize = 30;
   const totalPages = Math.min(500, Math.max(1, Math.ceil(state.modpackTotal / pageSize)));
   const summary = document.createElement("span");
   summary.className = "pagination-summary";
@@ -717,7 +717,7 @@ function formatBytes(bytes) {
 }
 
 function renderModSearchPagination() {
- const host=$("#mods-pagination");host.replaceChildren();const size=20,totalPages=Math.min(500,Math.max(1,Math.ceil(state.modsTotal/size)));
+ const host=$("#mods-pagination");host.replaceChildren();const size=30,totalPages=Math.min(500,Math.max(1,Math.ceil(state.modsTotal/size)));
  const summary=document.createElement("span");summary.className="pagination-summary";summary.textContent=state.modsTotal?`Showing ${((state.modsPage-1)*size)+1}–${Math.min(state.modsPage*size,state.modsTotal)} of ${state.modsTotal.toLocaleString()} mods`:"No mods found";host.append(summary);
  const controls=document.createElement("div");controls.className="pagination-controls";
  const add=(label,page,disabled=false)=>{const b=document.createElement("button");b.className="page-button";b.textContent=label;b.disabled=disabled||page===state.modsPage;b.addEventListener("click",()=>searchMods(page));controls.append(b);};
