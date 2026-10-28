@@ -10,7 +10,7 @@ const path = require("node:path");
 
 const MANIFEST_URL = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
 const MODRINTH_API = "https://api.modrinth.com/v2";
-const MOON_MENU_RELEASE_API = "https://api.github.com/repos/painopro123456-lang/glassmenu/releases/latest";
+const MOON_MENU_RELEASE_API = "https://api.github.com/repos/painopro123456-lang/glassmenu/releases/tags/latest";
 const MAX_MOON_MENU_JAR_BYTES = 100 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_PACK_ARCHIVE_BYTES = 256 * 1024 * 1024;
