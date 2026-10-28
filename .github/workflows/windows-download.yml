@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: moon-launcher-windows-build
+  group: moon-launcher-native-windows-build
   cancel-in-progress: false
 
 jobs:
