@@ -6,6 +6,9 @@ using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using CmlLib.Core;
+using CmlLib.Core.Auth;
+using CmlLib.Core.ProcessBuilder;
 
 namespace MoonLauncher;
 
@@ -14,6 +17,7 @@ public partial class MainWindow : Window
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(25) };
     private readonly string _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MoonLauncher");
     private readonly string _instancesPath;
+    private readonly string _minecraftPath;
     private readonly string _serversPath;
     private List<VersionEntry> _versions = new();
     private readonly MicrosoftAuthService _microsoftAuth = new();
@@ -35,6 +39,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _instancesPath = Path.Combine(_root, "instances.json");
+        _minecraftPath = Path.Combine(_root, "minecraft");
+        Directory.CreateDirectory(_minecraftPath);
         _serversPath = Path.Combine(_root, "servers.json");
         Directory.CreateDirectory(_root);
         DataDirectory.Text = _root;
@@ -120,21 +126,28 @@ public partial class MainWindow : Window
     private void Servers_Click(object sender, RoutedEventArgs e) => SetPage("Servers", "Keep your multiplayer addresses handy.", "Server shortcuts are saved locally on this PC.", "servers");
     private void Settings_Click(object sender, RoutedEventArgs e) => SetPage("Settings", "Moon Launcher preferences.", $"Data folder: {_root}", "settings");
 
+    private async Task EnsureVersionsLoadedAsync()
+    {
+        if (_versions.Count > 0) return;
+        StatusText.Text = "Downloading the official Minecraft version manifest…";
+        using var response = await Http.GetAsync("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json");
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        _versions = doc.RootElement.GetProperty("versions").EnumerateArray().Select(v => new VersionEntry(
+            v.GetProperty("id").GetString() ?? "",
+            v.GetProperty("type").GetString() ?? "",
+            v.GetProperty("releaseTime").GetString() ?? "")).Where(v => !string.IsNullOrWhiteSpace(v.Id)).ToList();
+        VersionCount.Text = $"{_versions.Count:N0} versions";
+        VersionsList.ItemsSource = _versions.Select(v => $"{v.Id}   •   {v.Type}   •   {v.ReleaseTime[..Math.Min(10, v.ReleaseTime.Length)]}").ToList();
+    }
+
     private async void LoadVersions_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            StatusText.Text = "Downloading the official Minecraft version manifest…";
-            var json = await Http.GetStringAsync("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json");
-            using var doc = JsonDocument.Parse(json);
-            _versions = doc.RootElement.GetProperty("versions").EnumerateArray().Select(v => new VersionEntry(
-                v.GetProperty("id").GetString() ?? "",
-                v.GetProperty("type").GetString() ?? "",
-                v.GetProperty("releaseTime").GetString() ?? "")).ToList();
-            VersionCount.Text = $"{_versions.Count:N0} versions";
-            VersionsList.ItemsSource = _versions.Select(v => $"{v.Id}   •   {v.Type}   •   {v.ReleaseTime[..Math.Min(10, v.ReleaseTime.Length)]}").ToList();
+            await EnsureVersionsLoadedAsync();
             ShowPanel("versions");
-            StatusText.Text = "Catalog loaded. Native game installation and launching are still being ported.";
+            StatusText.Text = "Catalog loaded. Select or create an instance to install and launch Minecraft.";
         }
         catch (Exception ex) { StatusText.Text = "Could not load Minecraft versions: " + ex.Message; }
     }
@@ -367,16 +380,87 @@ public partial class MainWindow : Window
             throw new InvalidDataException("Modpack contains a non-HTTPS download URL.");
     }
 
-    private void CreateInstance_Click(object sender, RoutedEventArgs e)
+    private async void CreateInstance_Click(object sender, RoutedEventArgs e)
     {
         var name = Microsoft.VisualBasic.Interaction.InputBox("Enter a name for the new instance:", "Create instance", "My Minecraft");
         if (string.IsNullOrWhiteSpace(name)) return;
-        var version = _versions.FirstOrDefault(v => v.Type == "release")?.Id ?? "latest release";
+        try
+        {
+            await EnsureVersionsLoadedAsync();
+            var version = _versions.FirstOrDefault(v => v.Type == "release")?.Id;
+            if (string.IsNullOrWhiteSpace(version))
+                throw new InvalidOperationException("Mojang's version catalog did not contain a stable release.");
+            var instances = ReadInstances();
+            instances.Add(new InstanceEntry(Guid.NewGuid().ToString("N"), name.Trim(), version, DateTimeOffset.UtcNow));
+            File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
+            RefreshInstances();
+            StatusText.Text = $"Created “{name.Trim()}” for Minecraft {version}. Select it and press Install & Play.";
+        }
+        catch (Exception ex) { StatusText.Text = "Could not create instance: " + ex.Message; }
+    }
+
+    private async void LaunchSelectedInstance_Click(object sender, RoutedEventArgs e)
+    {
         var instances = ReadInstances();
-        instances.Add(new InstanceEntry(Guid.NewGuid().ToString("N"), name.Trim(), version, DateTimeOffset.UtcNow));
-        File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
-        RefreshInstances();
-        StatusText.Text = $"Created local profile “{name.Trim()}”. Game installation and launch are not yet implemented.";
+        var selectedIndex = InstalledInstancesList.SelectedIndex;
+        if (selectedIndex < 0 || selectedIndex >= instances.Count)
+        {
+            StatusText.Text = "Select an installed instance first.";
+            return;
+        }
+
+        var instance = instances[selectedIndex];
+        var version = (instance.Version ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(version) || version.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+            version.Equals("undefined", StringComparison.OrdinalIgnoreCase) ||
+            version.Equals("latest release", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "This instance has an invalid Minecraft version. Create a new instance to replace it.";
+            return;
+        }
+
+        var credentials = _microsoftAuth.GetLaunchCredentials();
+        if (credentials is null)
+        {
+            StatusText.Text = "Your Microsoft session has expired. Sign in again in Settings, then retry.";
+            MessageBox.Show(this, "Your saved Minecraft session is missing or expired. Sign in with Microsoft again before launching.", "Sign-in required", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            SetLaunchButtonsEnabled(false);
+            StatusText.Text = $"Preparing Minecraft {version}. The first launch downloads required game files…";
+            var gamePath = new MinecraftPath(_minecraftPath);
+            var launcher = new MinecraftLauncher(gamePath);
+            var session = new MSession
+            {
+                Username = credentials.Username,
+                UUID = credentials.Uuid,
+                AccessToken = credentials.AccessToken,
+                Xuid = string.Empty
+            };
+            var options = new MLaunchOption { Session = session, MaximumRamMb = 4096 };
+            var process = await launcher.InstallAndBuildProcessAsync(version, options);
+            process.EnableRaisingEvents = true;
+            process.Exited += (_, _) => Dispatcher.InvokeAsync(() =>
+                StatusText.Text = $"Minecraft {version} has closed (exit code {process.ExitCode}).");
+            if (!process.Start())
+                throw new InvalidOperationException("Windows did not start the Minecraft process.");
+            StatusText.Text = $"Minecraft {version} launched. Game files: {_minecraftPath}";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Minecraft launch failed: " + ex.Message;
+            MessageBox.Show(this, ex.ToString(), "Minecraft launch failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { SetLaunchButtonsEnabled(true); }
+    }
+
+    private void SetLaunchButtonsEnabled(bool enabled)
+    {
+        LaunchSelectedInstanceButton.IsEnabled = enabled;
+        RefreshInstalledInstancesButton.IsEnabled = enabled;
     }
 
     private void AddServer_Click(object sender, RoutedEventArgs e)
