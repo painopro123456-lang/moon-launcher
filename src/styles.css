@@ -1910,3 +1910,5 @@ button:disabled { opacity: .48; cursor: not-allowed !important; transform: none 
   .game-console-heading { align-items: flex-start; flex-direction: column; }
   .game-console-panel-head, .game-console-row { grid-template-columns: 62px 54px minmax(0,1fr); gap: 7px; padding-left: 9px; padding-right: 9px; }
 }
+
+.mod-browser{margin-top:24px;padding:18px;border:1px solid var(--border);border-radius:16px;background:rgba(255,255,255,.018)}.local-mods-heading{margin-top:26px}.mod-search-results{display:grid;gap:10px;margin-top:16px}.mod-catalog-card{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--panel);min-width:0}.mod-catalog-icon{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:0 0 52px;background:var(--panel-soft)}.mod-catalog-info{flex:1;min-width:0;display:grid;gap:5px}.mod-catalog-info strong{font-size:14px}.mod-catalog-info p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;overflow-wrap:anywhere}.mod-catalog-meta,.catalog-count{color:var(--muted);font-size:12px}.mod-catalog-card .primary-button{flex:0 0 auto}
