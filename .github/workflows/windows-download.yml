@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-windows:
-    name: Build full-feature Moon Launcher for Windows x64
+    name: Build native Moon Launcher for Windows x64
     runs-on: windows-latest
     timeout-minutes: 45
 
@@ -23,64 +23,45 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: 22
+          dotnet-version: 8.0.x
 
-      - name: Generate app icon
+      - name: Restore and publish native Windows application
         shell: pwsh
         run: |
-          npm install --no-save --package-lock=false sharp png-to-ico
-          node scripts/build-icon.cjs
-          if (-not (Test-Path "native/moon-icon.ico")) { throw "Moon icon was not generated." }
+          dotnet restore native/MoonLauncher.csproj
+          dotnet publish native/MoonLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
+          $exe = "dist/Moon-Launcher.exe"
+          if (-not (Test-Path $exe)) { throw "Native Moon Launcher EXE was not created." }
+          if ((Get-Item $exe).Length -lt 1000000) { throw "Moon Launcher EXE is unexpectedly small." }
+          Copy-Item $exe "dist/Moon-Launcher-Portable.exe" -Force
 
-      - name: Install Electron app dependencies
-        run: npm install
-
-      - name: Build full Moon Launcher portable EXE and installer
-        shell: pwsh
-        run: |
-          npm run dist:win
-          $version = node -p "require('./package.json').version"
-          $portablePath = "dist/Moon-Launcher-Portable-$version.exe"
-          $setupPath = "dist/Moon-Launcher-Setup-$version.exe"
-          if (-not (Test-Path $portablePath)) { throw "Versioned portable Moon Launcher EXE was not created." }
-          if (-not (Test-Path $setupPath)) { throw "Versioned Moon Launcher installer was not created." }
-          $portable = Get-Item $portablePath
-          $setup = Get-Item $setupPath
-          if ($portable.Length -lt 1000000) { throw "Portable EXE is unexpectedly small: $($portable.Length) bytes." }
-          if ($setup.Length -lt 1000000) { throw "Installer is unexpectedly small: $($setup.Length) bytes." }
-          Copy-Item $portablePath "dist/Moon-Launcher.exe" -Force
-          Copy-Item $setupPath "dist/Moon-Launcher-Setup.exe" -Force
-
-      - name: Upload EXE and installer as workflow artifact
+      - name: Upload Windows EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: Moon-Launcher-Windows-x64
           path: |
-            dist/Moon-Launcher-Portable-*.exe
-            dist/Moon-Launcher-Setup-*.exe
             dist/Moon-Launcher.exe
-            dist/Moon-Launcher-Setup.exe
+            dist/Moon-Launcher-Portable.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish downloads to GitHub Releases
+      - name: Publish native EXE to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           target_commitish: main
           name: Moon Launcher — Latest Windows Build
           body: |
-            **Moon Launcher for Windows x64 — full UI/features build**
-            - The versioned Windows installer and portable EXE are attached below.
-            - Stable-name aliases are also updated for compatibility.
+            **Moon Launcher for Windows x64**
+            - Native self-contained Windows EXE.
+            - Microsoft Client ID is embedded for Microsoft sign-in.
+            - Minecraft installation and launch use the native .NET launcher engine.
           files: |
-            dist/Moon-Launcher-Portable-*.exe
-            dist/Moon-Launcher-Setup-*.exe
             dist/Moon-Launcher.exe
-            dist/Moon-Launcher-Setup.exe
+            dist/Moon-Launcher-Portable.exe
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
