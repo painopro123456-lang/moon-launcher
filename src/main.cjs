@@ -1305,18 +1305,27 @@ async function launchInstanceInternal(instanceId) {
   const installedVersionDirectory = path.join(minecraftRoot, "versions", launchVersion);
   const installedVersionJson = path.join(installedVersionDirectory, launchVersion + ".json");
   const installedVersionJar = path.join(installedVersionDirectory, launchVersion + ".jar");
-  let versionMetadata;
+  let versionMetadata = null;
   try {
     versionMetadata = JSON.parse(await fs.readFile(installedVersionJson, "utf8"));
   } catch {
+    // A missing version JSON is normal for a fresh instance. Let
+    // minecraft-launcher-core download and create the official profile below.
+  }
+
+  // A previous interrupted download or stale profile must not block first launch.
+  // Remove only the selected version's invalid metadata so launcher-core can
+  // fetch a clean copy from Mojang. Fabric profiles are recreated by the loader
+  // installer before reaching this point.
+  if (versionMetadata && versionMetadata.id !== launchVersion) {
+    await fs.rm(installedVersionDirectory, { recursive: true, force: true });
     versionMetadata = null;
   }
-  // Do not hand launcher-core an incomplete profile. The profile ID, JSON ID and
-  // folder/file names must agree, otherwise newer version IDs can resolve to null.
-  if (!versionMetadata || versionMetadata.id !== launchVersion) {
-    throw new Error("Minecraft " + minecraftVersion + " has missing or invalid version metadata (" + launchVersion + "). Delete this instance's version files and retry so Moon Launcher can reinstall them.");
-  }
-  const minecraftAlreadyInstalled = await pathExists(installedVersionJar);
+
+  const minecraftAlreadyInstalled = Boolean(
+    versionMetadata && versionMetadata.id === launchVersion &&
+    await pathExists(installedVersionJar)
+  );
   reportLaunchProgress(
     id,
     minecraftAlreadyInstalled ? "preparing" : "downloading-game",
