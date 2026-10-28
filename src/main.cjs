@@ -1354,6 +1354,24 @@ async function launchInstanceInternal(instanceId) {
 
   const { Client } = require("minecraft-launcher-core");
   const launcher = new Client();
+  let lastLauncherDiagnostic = "";
+  // MCLC catches many internal launch failures and returns null instead of throwing.
+  // Forward its diagnostic events so the Logs panel shows the real cause instead of
+  // only "Minecraft launcher did not return a process". Never display the full command
+  // line because it can contain authentication tokens.
+  launcher.on("debug", (entry) => {
+    let detail = String(entry || "").trim();
+    if (!detail || /Launching with arguments/i.test(detail)) return;
+    detail = detail
+      .replace(/(--accessToken\\s+)\\S+/gi, "$1[redacted]")
+      .replace(/(--clientId\\s+)\\S+/gi, "$1[redacted]")
+      .replace(/(--uuid\\s+)\\S+/gi, "$1[redacted]")
+      .replace(/(access_token[=:]\\s*)[^,\\s]+/gi, "$1[redacted]");
+    lastLauncherDiagnostic = detail;
+    reportLaunchProgress(id, "game-log", detail, {
+      logLevel: /failed|couldn't|error|exception/i.test(detail) ? "warning" : "info"
+    });
+  });
   // minecraft-launcher-core attaches listeners to the child process streams.
   // javaw.exe intentionally has no console streams on Windows, which can cause
   // "Cannot read properties of null (reading 'stdout')" during launch. Prefer
@@ -1409,8 +1427,11 @@ async function launchInstanceInternal(instanceId) {
   // Some launcher-core failure paths can resolve without returning a child process.
   // Guard before reading stdout/stderr so the renderer receives a useful launch error.
   if (!gameProcess || typeof gameProcess !== "object") {
-    reportLaunchProgress(id, "error", "Minecraft launcher did not return a process. Check the selected Minecraft version and its installed version metadata.");
-    throw new Error("Minecraft launcher did not return a process (launch result was null). Check the selected Minecraft version and try reinstalling the instance.");
+    const detail = lastLauncherDiagnostic
+      ? " Last launcher diagnostic: " + lastLauncherDiagnostic
+      : " No diagnostic was returned by the Minecraft launcher; open the Logs panel and retry.";
+    reportLaunchProgress(id, "error", "Minecraft launcher did not return a process." + detail);
+    throw new Error("Minecraft launcher did not return a process." + detail);
   }
   activeLaunches.set(id, gameProcess);
   const forwardMinecraftOutput = (chunk, logLevel) => {
