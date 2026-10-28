@@ -444,23 +444,23 @@ async function getLatestMoonMenuAsset() {
 
 async function downloadMoonMenuJar(releaseInfo) {
   const info = releaseInfo || await getLatestMoonMenuAsset();
-  if (!info) throw new Error("Moon Menu's published JAR is currently unavailable.");
+  if (!info) throw new Error("GlassMenu's published JAR is currently unavailable.");
   const { release, asset } = info;
   const url = new URL(asset.browser_download_url);
   if (url.protocol !== "https:" || !["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"].includes(url.hostname)) {
-    throw new Error("Moon Menu's release uses an unsupported download host.");
+    throw new Error("GlassMenu's release uses an unsupported download host.");
   }
   const jarResponse = await fetch(url, { headers: { "User-Agent": MODRINTH_USER_AGENT }, signal: AbortSignal.timeout(60000) });
-  if (!jarResponse.ok) throw new Error("Moon Menu download failed (HTTP " + jarResponse.status + ").");
+  if (!jarResponse.ok) throw new Error("GlassMenu download failed (HTTP " + jarResponse.status + ").");
   const bytes = Buffer.from(await jarResponse.arrayBuffer());
   if (!bytes.length || bytes.length > MAX_MOON_MENU_JAR_BYTES || (asset.size && bytes.length !== Number(asset.size))) {
-    throw new Error("The downloaded Moon Menu JAR did not match the published file size.");
+    throw new Error("The downloaded GlassMenu JAR did not match the published file size.");
   }
   if (asset.digest && /^sha256:[a-f0-9]{64}$/i.test(asset.digest)) {
     const digest = crypto.createHash("sha256").update(bytes).digest("hex");
-    if (digest.toLowerCase() !== asset.digest.slice(7).toLowerCase()) throw new Error("Moon Menu's downloaded JAR failed its SHA-256 integrity check.");
+    if (digest.toLowerCase() !== asset.digest.slice(7).toLowerCase()) throw new Error("GlassMenu's downloaded JAR failed its SHA-256 integrity check.");
   }
-  if (bytes.subarray(0, 2).toString("hex") !== "504b") throw new Error("The published Moon Menu file is not a valid JAR archive.");
+  if (bytes.subarray(0, 2).toString("hex") !== "504b") throw new Error("The published GlassMenu file is not a valid JAR archive.");
   return { bytes, version: String(release.tag_name || release.name || "latest"), fileName: asset.name };
 }
 
@@ -468,8 +468,7 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
   const { zip, manifest, pack } = parseMrpackArchive(archiveBytes);
   const projectId = String(metadata.projectId || "");
   const progressId = projectId || "local-import";
-  let includeMoonMenu = false;
-  let moonMenuRelease = null;
+  let glassMenuRelease = null;
   const isFabricApiPath = (value) => {
     const normalized = String(value || "").replace(/\\/g, "/").toLowerCase();
     return normalized.startsWith("mods/") && normalized.endsWith(".jar") && normalized.split("/").pop().includes("fabric-api");
@@ -480,27 +479,16 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
       return (normalized.startsWith("overrides/") || normalized.startsWith("client-overrides/"))
         && isFabricApiPath(normalized.slice(normalized.indexOf("/") + 1));
     });
-  const compatibleMoonMenuPack = pack.version === "26.2"
+  const compatibleGlassMenuPack = pack.version === "26.2"
     && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader")
     && hasFabricApi;
-  if (compatibleMoonMenuPack) {
-    const releaseInfo = await getLatestMoonMenuAsset().catch(() => null);
-    if (releaseInfo) {
-      const choice = await dialog.showMessageBox(mainWindow, {
-        type: "question",
-        buttons: ["Include Moon Menu", "No thanks"],
-        defaultId: 0,
-        cancelId: 1,
-        title: "Include Moon Menu?",
-        message: "Add Moon Menu to this modpack?",
-        detail: "This Minecraft 26.2 Fabric pack includes Fabric API, which Moon Menu requires. The mod will be installed into this instance's mods folder."
-      });
-      includeMoonMenu = choice.response === 0;
-      if (includeMoonMenu) {
-        reportModpackProgress(progressId, "Downloading Moon Menu…", 0, 0);
-        moonMenuRelease = await downloadMoonMenuJar(releaseInfo);
-      }
-    }
+  // Automatically include GlassMenu in every compatible 26.2 Fabric modpack.
+  if (compatibleGlassMenuPack) {
+    reportModpackProgress(progressId, "Finding GlassMenu release…", 0, 0);
+    const releaseInfo = await getLatestMoonMenuAsset();
+    if (!releaseInfo) throw new Error("GlassMenu's compatible JAR release is unavailable. The modpack was not installed without it.");
+    reportModpackProgress(progressId, "Downloading GlassMenu…", 0, 0);
+    glassMenuRelease = await downloadMoonMenuJar(releaseInfo);
   }
 
   const instanceId = crypto.randomUUID();
@@ -580,7 +568,7 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
       const safeJarName = path.basename(moonMenuRelease.fileName);
       const jarPath = path.join(modsDirectory, safeJarName);
       if (uniquePaths.has(("mods/" + safeJarName).toLowerCase())) {
-        throw new Error("This modpack already contains a file with the Moon Menu JAR name.");
+        throw new Error("This modpack already contains a file with the GlassMenu JAR name.");
       }
       await fs.writeFile(jarPath, moonMenuRelease.bytes, { flag: "wx" });
       installedFiles++;
@@ -1504,7 +1492,7 @@ async function importModpack() {
 async function searchModpacks(input) {
   const options = input && typeof input === "object" ? input : { query: input };
   const query = String(options.query || "").slice(0, 100);
-  const page = Math.max(1, Math.min(500, Math.floor(Number(options.page) || 1)));
+  const page = Math.max(1, Math.min(5000, Math.floor(Number(options.page) || 1)));
   const limit = 20;
   const params = new URLSearchParams({
     query,
@@ -1548,6 +1536,37 @@ async function findInstance(instanceId) {
   const instance = (await readInstances()).find((item) => item.id === id);
   if (!instance) throw new Error("That Minecraft instance could not be found.");
   return instance;
+}
+async function searchMods(input = {}) {
+  const options = input && typeof input === "object" ? input : { query: input };
+  const query = String(options.query || "").slice(0, 100);
+  const page = Math.max(1, Math.min(5000, Math.floor(Number(options.page) || 1)));
+  const limit = 20;
+  const params = new URLSearchParams({ query, facets: '[ ["project_type:mod"] ]'.replace(/ /g, ""), limit: String(limit), offset: String((page - 1) * limit), index: "downloads" });
+  const data = await fetchModrinthJson(MODRINTH_API + "/search?" + params.toString());
+  return { projects: (data.hits || []).map((project) => ({ id: String(project.project_id || ""), slug: String(project.slug || ""), title: String(project.title || "Untitled mod"), description: String(project.description || ""), iconUrl: String(project.icon_url || ""), downloads: Number(project.downloads) || 0, categories: Array.isArray(project.categories) ? project.categories : [] })), total: Number(data.total) || 0, page, pageSize: limit };
+}
+function getModrinthLoader(instance) { const value = String(instance.pack?.loader || "").toLowerCase(); if (value.includes("fabric")) return "fabric"; if (value.includes("neoforge")) return "neoforge"; if (value.includes("forge")) return "forge"; if (value.includes("quilt")) return "quilt"; return ""; }
+async function installModrinthMod(instanceId, projectId) {
+  const instance = await findInstance(instanceId); const id = String(projectId || "");
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(id)) throw new Error("Choose a valid Modrinth mod.");
+  const loader = getModrinthLoader(instance); if (!loader) throw new Error("This instance has no supported mod loader. Install a Fabric, Forge, NeoForge, or Quilt modpack first.");
+  const minecraftVersion = String(instance.minecraftVersion || ""); if (!minecraftVersion) throw new Error("This instance is missing its Minecraft version.");
+  const params = new URLSearchParams({ game_versions: JSON.stringify([minecraftVersion]), loaders: JSON.stringify([loader]) });
+  const versions = await fetchModrinthJson(MODRINTH_API + "/project/" + encodeURIComponent(id) + "/version?" + params.toString());
+  if (!Array.isArray(versions) || !versions.length) throw new Error("No compatible version was found for Minecraft " + minecraftVersion + " and " + loader + ".");
+  const ordered = versions.slice().sort((a,b) => (Date.parse(b.date_published || "") || 0) - (Date.parse(a.date_published || "") || 0)); let selected = null;
+  for (const version of ordered) { const file = (version.files || []).find((item) => item.primary && /\.jar$/i.test(item.filename || "")) || (version.files || []).find((item) => /\.jar$/i.test(item.filename || "")); if (file?.url) { selected = { version, file }; break; } }
+  if (!selected) throw new Error("Modrinth has no downloadable JAR for this mod.");
+  const { version, file } = selected; const fileName = path.basename(String(file.filename || ""));
+  if (!fileName || fileName === "." || fileName === ".." || !/\.jar$/i.test(fileName)) throw new Error("Modrinth returned an invalid mod filename.");
+  const directory = path.join(getInstancesPath(), instance.id, "mods"); await fs.mkdir(directory, { recursive: true }); const destination = path.join(directory, fileName);
+  if (await pathExists(destination)) throw new Error("This mod file is already installed: " + fileName);
+  const bytes = await downloadTrustedModrinthFile(file.url, MAX_PACK_FILE_BYTES);
+  if (file.size && bytes.length !== Number(file.size)) throw new Error("The downloaded mod size did not match Modrinth's listing.");
+  if (!file.hashes?.sha1 || !file.hashes?.sha512) throw new Error("Modrinth did not provide required checksums for this mod.");
+  verifyModrinthHashes(bytes, file.hashes, fileName, true); if (bytes.subarray(0, 2).toString("hex") !== "504b") throw new Error("The downloaded file is not a valid JAR archive.");
+  await fs.writeFile(destination, bytes, { flag: "wx" }); return { name: fileName, version: String(version.version_number || version.name || version.id || ""), instanceId: instance.id, size: bytes.length };
 }
 async function listInstanceMods(instanceId) {
   const instance = await findInstance(instanceId);
@@ -1732,6 +1751,8 @@ ipcMain.handle("modpacks:search", (_event, query) => searchModpacks(query));
 ipcMain.handle("modpacks:versions", (_event, project) => getModrinthPackVersions(project || {}));
 ipcMain.handle("modpacks:install", (_event, project, versionId) => installModrinthPack(project || {}, versionId));
 ipcMain.handle("modpacks:open", (_event, slug) => openProject(slug));
+ipcMain.handle("mods:search", (_event, options) => searchMods(options));
+ipcMain.handle("mods:install", (_event, instanceId, projectId) => installModrinthMod(instanceId, projectId));
 ipcMain.handle("mods:list", (_event, instanceId) => listInstanceMods(instanceId));
 ipcMain.handle("mods:toggle", (_event, instanceId, fileName) => toggleInstanceMod(instanceId, fileName));
 ipcMain.handle("mods:delete", (_event, instanceId, fileName) => deleteInstanceMod(instanceId, fileName));
