@@ -464,11 +464,32 @@ async function downloadMoonMenuJar(releaseInfo) {
   return { bytes, version: String(release.tag_name || release.name || "latest"), fileName: asset.name };
 }
 
+async function downloadModrinthCompatibleJar(projectId, minecraftVersion, loader, label) {
+  const params = new URLSearchParams({ game_versions: JSON.stringify([minecraftVersion]), loaders: JSON.stringify([loader]) });
+  const versions = await fetchModrinthJson(MODRINTH_API + "/project/" + encodeURIComponent(projectId) + "/version?" + params.toString());
+  const ordered = Array.isArray(versions) ? versions.slice().sort((a, b) => (Date.parse(b.date_published || "") || 0) - (Date.parse(a.date_published || "") || 0)) : [];
+  for (const version of ordered) {
+    const file = (version.files || []).find((item) => item.primary && /\.jar$/i.test(item.filename || ""))
+      || (version.files || []).find((item) => /\.jar$/i.test(item.filename || ""));
+    if (!file?.url) continue;
+    const fileName = path.basename(String(file.filename || ""));
+    if (!fileName || !/\.jar$/i.test(fileName)) continue;
+    const bytes = await downloadTrustedModrinthFile(file.url, MAX_PACK_FILE_BYTES);
+    if (file.size && bytes.length !== Number(file.size)) throw new Error(label + " download size did not match Modrinth's listing.");
+    if (!file.hashes?.sha1 || !file.hashes?.sha512) throw new Error(label + " release is missing required checksums.");
+    verifyModrinthHashes(bytes, file.hashes, fileName, true);
+    if (bytes.subarray(0, 2).toString("hex") !== "504b") throw new Error(label + " download is not a valid JAR archive.");
+    return { bytes, fileName, version: String(version.version_number || version.name || version.id || "") };
+  }
+  throw new Error("No compatible " + label + " release was found for Minecraft " + minecraftVersion + " with " + loader + ".");
+}
+
 async function installMrpackArchive(archiveBytes, metadata = {}) {
   const { zip, manifest, pack } = parseMrpackArchive(archiveBytes);
   const projectId = String(metadata.projectId || "");
   const progressId = projectId || "local-import";
   let glassMenuRelease = null;
+  let fabricApiRelease = null;
   const isFabricApiPath = (value) => {
     const normalized = String(value || "").replace(/\\/g, "/").toLowerCase();
     return normalized.startsWith("mods/") && normalized.endsWith(".jar") && normalized.split("/").pop().includes("fabric-api");
@@ -480,10 +501,13 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
         && isFabricApiPath(normalized.slice(normalized.indexOf("/") + 1));
     });
   const compatibleGlassMenuPack = pack.version === "26.2"
-    && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader")
-    && hasFabricApi;
+    && Object.prototype.hasOwnProperty.call(manifest.dependencies || {}, "fabric-loader");
   // Automatically include GlassMenu in every compatible 26.2 Fabric modpack.
   if (compatibleGlassMenuPack) {
+    if (!hasFabricApi) {
+      reportModpackProgress(progressId, "Downloading required Fabric API…", 0, 0);
+      fabricApiRelease = await downloadModrinthCompatibleJar("P7dR8mSH", pack.version, "fabric", "Fabric API");
+    }
     reportModpackProgress(progressId, "Finding GlassMenu release…", 0, 0);
     const releaseInfo = await getLatestMoonMenuAsset();
     if (!releaseInfo) throw new Error("GlassMenu's compatible JAR release is unavailable. The modpack was not installed without it.");
@@ -562,6 +586,12 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
     const overrideTotals = { bytes: 0 };
     overrideFiles += await applyMrpackOverrides(zip, "overrides/", stagingDirectory, overrideTotals, progressId);
     overrideFiles += await applyMrpackOverrides(zip, "client-overrides/", stagingDirectory, overrideTotals, progressId);
+    if (fabricApiRelease) {
+      const modsDirectory = path.join(stagingDirectory, "mods");
+      await fs.mkdir(modsDirectory, { recursive: true });
+      await fs.writeFile(path.join(modsDirectory, path.basename(fabricApiRelease.fileName)), fabricApiRelease.bytes, { flag: "wx" });
+      installedFiles++;
+    }
     if (glassMenuRelease) {
       const modsDirectory = path.join(stagingDirectory, "mods");
       await fs.mkdir(modsDirectory, { recursive: true });
