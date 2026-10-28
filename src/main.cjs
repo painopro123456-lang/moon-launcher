@@ -562,15 +562,15 @@ async function installMrpackArchive(archiveBytes, metadata = {}) {
     const overrideTotals = { bytes: 0 };
     overrideFiles += await applyMrpackOverrides(zip, "overrides/", stagingDirectory, overrideTotals, progressId);
     overrideFiles += await applyMrpackOverrides(zip, "client-overrides/", stagingDirectory, overrideTotals, progressId);
-    if (moonMenuRelease) {
+    if (glassMenuRelease) {
       const modsDirectory = path.join(stagingDirectory, "mods");
       await fs.mkdir(modsDirectory, { recursive: true });
-      const safeJarName = path.basename(moonMenuRelease.fileName);
+      const safeJarName = path.basename(glassMenuRelease.fileName);
       const jarPath = path.join(modsDirectory, safeJarName);
       if (uniquePaths.has(("mods/" + safeJarName).toLowerCase())) {
         throw new Error("This modpack already contains a file with the GlassMenu JAR name.");
       }
-      await fs.writeFile(jarPath, moonMenuRelease.bytes, { flag: "wx" });
+      await fs.writeFile(jarPath, glassMenuRelease.bytes, { flag: "wx" });
       installedFiles++;
     }
 
