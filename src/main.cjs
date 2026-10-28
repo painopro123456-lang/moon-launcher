@@ -1368,7 +1368,12 @@ async function launchInstanceInternal(instanceId) {
           : { type: "msa", demo: false, xuid: account.xuid, clientId: account.clientId }
       },
       root: minecraftRoot,
-      version: { number: launchVersion, type: versionDetails.type },
+      // Fabric profiles use the base Minecraft version plus a custom profile folder.
+      // MCLC's "custom" option is required to load the Fabric JSON while keeping
+      // the base version number for Minecraft's version arguments.
+      version: isFabricPack
+        ? { number: minecraftVersion, type: versionDetails.type, custom: launchVersion }
+        : { number: launchVersion, type: versionDetails.type },
       // Always let minecraft-launcher-core resolve/validate version metadata.
       // Existing JSON/JAR files alone are not enough to prove the version profile is usable;
       // stale or incomplete metadata caused "version is null" on affected versions.
