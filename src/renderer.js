@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], gameLogs: [], gameLogSequence: 0, modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, logs: [], logSequence: 0 };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], gameLogs: [], gameLogSequence: 0, modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, modsPage: 1, modsTotal: 0, modsQuery: "", modsRequestId: 0, logs: [], logSequence: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -75,6 +75,7 @@ function setCatalogState(online, message) {
 function setView(view) {
   state.view = view;
   if (view === "modpacks" && !state.modpacksLoaded) searchModpacks(1);
+  if (view === "mods") { if (!state.modsTotal) searchMods(1); refreshModsInstanceOptions(); }
   if (view === "instances") { renderInstancesInto("#installed-instance-list"); renderGameLogs(); }
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
@@ -712,6 +713,30 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
+
+function renderModSearchPagination() {
+ const host=$("#mods-pagination");host.replaceChildren();const size=20,totalPages=Math.max(1,Math.ceil(state.modsTotal/size));
+ const summary=document.createElement("span");summary.className="pagination-summary";summary.textContent=state.modsTotal?`Showing ${((state.modsPage-1)*size)+1}–${Math.min(state.modsPage*size,state.modsTotal)} of ${state.modsTotal.toLocaleString()} mods`:"No mods found";host.append(summary);
+ const controls=document.createElement("div");controls.className="pagination-controls";
+ const add=(label,page,disabled=false)=>{const b=document.createElement("button");b.className="page-button";b.textContent=label;b.disabled=disabled||page===state.modsPage;b.addEventListener("click",()=>searchMods(page));controls.append(b);};
+ add("«",1,state.modsPage<=1);add("←",state.modsPage-1,state.modsPage<=1);const start=Math.max(1,Math.min(state.modsPage-2,totalPages-4));
+ for(let page=start;page<=Math.min(totalPages,start+4);page++){const b=document.createElement("button");b.className="page-button"+(page===state.modsPage?" active":"");b.textContent=String(page);b.disabled=page===state.modsPage;b.addEventListener("click",()=>searchMods(page));controls.append(b);}
+ add("→",state.modsPage+1,state.modsPage>=totalPages);add("»",totalPages,state.modsPage>=totalPages);host.append(controls);const label=document.createElement("span");label.className="pagination-page-label";label.textContent=`Page ${state.modsPage} of ${totalPages.toLocaleString()}`;host.append(label);
+}
+function renderModSearchResults(projects) {
+ const host=$("#mod-search-results");host.replaceChildren();if(!projects.length){const empty=document.createElement("div");empty.className="empty-card";empty.textContent=state.modsQuery?"No mods found. Try a different search.":"No mods were returned. Check your connection and try again.";host.append(empty);return;}
+ for(const project of projects){const row=document.createElement("article");row.className="mod-catalog-card";
+  if(project.iconUrl){const img=document.createElement("img");img.className="mod-catalog-icon";img.src=project.iconUrl;img.alt="";img.loading="lazy";img.referrerPolicy="no-referrer";img.onerror=()=>img.remove();row.append(img);}
+  const info=document.createElement("div");info.className="mod-catalog-info";const title=document.createElement("strong");title.textContent=project.title;const desc=document.createElement("p");desc.textContent=project.description||"No description provided.";const meta=document.createElement("span");meta.className="mod-catalog-meta";meta.textContent=`${Number(project.downloads||0).toLocaleString()} downloads · ${(project.categories||[]).slice(0,3).join(", ")||"Minecraft mod"}`;info.append(title,desc,meta);
+  const install=document.createElement("button");install.className="primary-button";install.textContent="Download";install.addEventListener("click",async()=>{const instanceId=$("#mods-instance-select").value;if(!instanceId){showToast("Choose a Minecraft instance first.");return;}install.disabled=true;install.textContent="Downloading…";try{const installed=await api.installModrinthMod(instanceId,project.id);await loadModsForSelectedInstance();showToast("Installed "+installed.name+" into this instance.");}catch(error){showToast(error.message||"Could not download this mod.");}finally{install.disabled=false;install.textContent="Download";}});row.append(info,install);host.append(row);
+ }
+}
+async function searchMods(page=1) {
+ state.modsQuery=$("#mods-query").value.trim();state.modsPage=Math.max(1,Number(page)||1);const requestId=++state.modsRequestId;const host=$("#mod-search-results");host.replaceChildren();const loading=document.createElement("div");loading.className="search-message";loading.textContent=state.modsPage===1&&!state.modsQuery?"Loading popular Modrinth mods…":`Loading mod page ${state.modsPage}…`;host.append(loading);$("#mods-pagination").replaceChildren();
+ try{const result=await api.searchMods({query:state.modsQuery,page:state.modsPage});if(requestId!==state.modsRequestId)return;state.modsTotal=result.total;state.modsPage=result.page;$("#mods-catalog-count").textContent=result.total.toLocaleString()+" mods available";renderModSearchResults(result.projects||[]);renderModSearchPagination();}
+ catch(error){if(requestId!==state.modsRequestId)return;host.replaceChildren();const msg=document.createElement("div");msg.className="search-message";msg.textContent=error.message||"Modrinth mod search is unavailable.";host.append(msg);$("#mods-pagination").replaceChildren();}
+}
+
 function refreshModsInstanceOptions() {
   const select = $("#mods-instance-select");
   const previous = select.value;
@@ -819,6 +844,8 @@ $("#quick-play").addEventListener("click", () => {
 });
 $("#mods-instance-select").addEventListener("change", loadModsForSelectedInstance);
 $("#refresh-mods").addEventListener("click", loadModsForSelectedInstance);
+$("#search-mods").addEventListener("click", () => searchMods(1));
+$("#mods-query").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); searchMods(1); } });
 $("#open-mods-folder").addEventListener("click", async () => { if (!$("#mods-instance-select").value) return showToast("Create an instance first."); try { await api.openInstanceModsFolder($("#mods-instance-select").value); } catch (error) { showToast(error.message || "Could not open the mods folder."); } });
 $("#server-form").addEventListener("submit", async (event) => {
   event.preventDefault();
