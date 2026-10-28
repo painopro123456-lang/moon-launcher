@@ -1,5 +1,5 @@
 const api = window.moonLauncher;
-const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], gameLogs: [], gameLogSequence: 0, modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, modsPage: 1, modsTotal: 0, modsQuery: "", modsRequestId: 0, logs: [], logSequence: 0 };
+const state = { versions: [], instances: [], view: "home", toastTimer: null, activeInstall: null, account: null, settings: null, verificationUri: "", signInPromise: null, servers: [], gameLogs: [], gameLogSequence: 0, modsInstanceId: "", modpackPage: 1, modpackTotal: 0, modpackQuery: "", modpackRequestId: 0, modpacksLoaded: false, modpackHasMore: false, modsPage: 1, modsTotal: 0, modsQuery: "", modsRequestId: 0, modsHasMore: false, logs: [], logSequence: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -467,7 +467,7 @@ function renderModpackPagination() {
   if (!host) return;
   host.replaceChildren();
   const pageSize = 30;
-  const totalPages = Math.min(500, Math.max(1, Math.ceil(state.modpackTotal / pageSize)));
+  const totalPages = Math.min(500, Math.max(1, Math.ceil(state.modpackTotal / pageSize), state.modpackHasMore ? state.modpackPage + 1 : state.modpackPage));
   const summary = document.createElement("span");
   summary.className = "pagination-summary";
   const first = state.modpackTotal === 0 ? 0 : ((state.modpackPage - 1) * pageSize) + 1;
@@ -717,7 +717,7 @@ function formatBytes(bytes) {
 }
 
 function renderModSearchPagination() {
- const host=$("#mods-pagination");host.replaceChildren();const size=30,totalPages=Math.min(500,Math.max(1,Math.ceil(state.modsTotal/size)));
+ const host=$("#mods-pagination");host.replaceChildren();const size=30,totalPages=Math.min(500,Math.max(1,Math.ceil(state.modsTotal/size),state.modsHasMore?state.modsPage+1:state.modsPage));
  const summary=document.createElement("span");summary.className="pagination-summary";summary.textContent=state.modsTotal?`Showing ${((state.modsPage-1)*size)+1}–${Math.min(state.modsPage*size,state.modsTotal)} of ${state.modsTotal.toLocaleString()} mods`:"No mods found";host.append(summary);
  const controls=document.createElement("div");controls.className="pagination-controls";
  const add=(label,page,disabled=false)=>{const b=document.createElement("button");b.className="page-button";b.textContent=label;b.disabled=disabled||page===state.modsPage;b.addEventListener("click",()=>searchMods(page));controls.append(b);};
@@ -735,7 +735,7 @@ function renderModSearchResults(projects) {
 }
 async function searchMods(page=1) {
  state.modsQuery=$("#mods-query").value.trim();state.modsPage=Math.max(1,Number(page)||1);const requestId=++state.modsRequestId;const host=$("#mod-search-results");host.replaceChildren();const loading=document.createElement("div");loading.className="search-message";loading.textContent=state.modsPage===1&&!state.modsQuery?"Loading popular Modrinth mods…":`Loading mod page ${state.modsPage}…`;host.append(loading);$("#mods-pagination").replaceChildren();
- try{const result=await api.searchMods({query:state.modsQuery,page:state.modsPage});if(requestId!==state.modsRequestId)return;state.modsTotal=result.total;state.modsPage=result.page;$("#mods-catalog-count").textContent=result.total.toLocaleString()+" mods available";renderModSearchResults(result.projects||[]);renderModSearchPagination();}
+ try{const result=await api.searchMods({query:state.modsQuery,page:state.modsPage});if(requestId!==state.modsRequestId)return;state.modsTotal=result.total;state.modsPage=result.page;state.modsHasMore=(result.projects||[]).length>=30 && state.modsPage<500;$("#mods-catalog-count").textContent=result.total.toLocaleString()+" mods available";renderModSearchResults(result.projects||[]);renderModSearchPagination();}
  catch(error){if(requestId!==state.modsRequestId)return;host.replaceChildren();const msg=document.createElement("div");msg.className="search-message";msg.textContent=error.message||"Modrinth mod search is unavailable.";host.append(msg);$("#mods-pagination").replaceChildren();}
 }
 
@@ -811,6 +811,7 @@ async function searchModpacks(page = 1) {
     if (requestId !== state.modpackRequestId) return;
     state.modpackTotal = result.total;
     state.modpackPage = result.page;
+    state.modpackHasMore = (result.projects || []).length >= 30 && state.modpackPage < 500;
     state.modpacksLoaded = true;
     renderSearchResults(result.projects || []);
   } catch (error) {
