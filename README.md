@@ -14,7 +14,7 @@ The installer does not automatically delete user data when uninstalling.
 
 ## Native build status
 
-The native WPF rewrite is in progress. Features from the former Electron application are **not yet all ported**. Minecraft installation and launching, Microsoft login, modpack import/download, and the previous settings are not implemented in this initial native migration. Do not assume the old Electron feature set is available yet.
+The native WPF build includes Microsoft sign-in, the official Minecraft version catalog, instance creation, and an **Install & Play** action powered by CmlLib.Core. The first launch downloads the selected version's required files. The launcher uses the embedded Microsoft Client ID and the locally saved Minecraft session; if the saved game token expires, sign in again. CmlLib.Core documents support for vanilla and modified versions, but its published testing notes currently only confirm versions through 1.21, so Minecraft 26.2 still requires a real launch test before it can be called verified.
 
 ## Build from source
 
