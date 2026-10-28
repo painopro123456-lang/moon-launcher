@@ -39,6 +39,26 @@ jobs:
       - name: Build Windows installer and portable EXE
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         run: npm run dist:win
+      - name: Publish current Setup.exe to the stable latest release
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem "dist/Moon-Launcher-Setup-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) { throw "The versioned Moon Launcher Setup installer was not created." }
+          Copy-Item $setup.FullName "dist/Moon-Launcher-Setup.exe" -Force
+      - name: Upload current Setup.exe to stable latest release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          target_commitish: main
+          name: Moon Launcher — Latest Windows Build
+          files: dist/Moon-Launcher-Setup.exe
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Windows EXE artifacts
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
