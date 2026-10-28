@@ -353,7 +353,7 @@ public partial class MainWindow : Window
             instances.Add(new InstanceEntry(id, name, version, DateTimeOffset.UtcNow));
             File.WriteAllText(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
             RefreshInstances();
-            SetPage("Installed Instances", "Your installed modpacks are listed here.", $"Files are ready for “{name}”. Downloaded {count} file(s). Minecraft launching is not implemented in this build yet.", "instances");
+            SetPage("Installed Instances", "Your installed modpacks are listed here.", $"Files are ready for “{name}”. Downloaded {count} file(s). Select the instance and press Install & Play to install the matching Minecraft version.", "instances");
         }
         catch
         {
@@ -415,8 +415,22 @@ public partial class MainWindow : Window
             version.Equals("undefined", StringComparison.OrdinalIgnoreCase) ||
             version.Equals("latest release", StringComparison.OrdinalIgnoreCase))
         {
-            StatusText.Text = "This instance has an invalid Minecraft version. Create a new instance to replace it.";
-            return;
+            try
+            {
+                await EnsureVersionsLoadedAsync();
+                version = _versions.FirstOrDefault(v => v.Type.Equals("release", StringComparison.OrdinalIgnoreCase))?.Id ?? "";
+                if (string.IsNullOrWhiteSpace(version))
+                    throw new InvalidOperationException("Mojang's official catalog did not return a stable release.");
+                instances[selectedIndex] = instance with { Version = version };
+                await File.WriteAllTextAsync(_instancesPath, JsonSerializer.Serialize(instances, new JsonSerializerOptions { WriteIndented = true }));
+                RefreshInstalledInstances();
+                StatusText.Text = $"Repaired the missing version for “{instance.Name}” to Minecraft {version}. Preparing launch…";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Could not repair this instance's missing Minecraft version: " + ex.Message;
+                return;
+            }
         }
 
         var credentials = _microsoftAuth.GetLaunchCredentials();
