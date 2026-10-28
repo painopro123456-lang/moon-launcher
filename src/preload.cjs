@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld("moonLauncher", Object.freeze({
     return () => ipcRenderer.removeListener("modpacks:progress", listener);
   },
   openModrinthProject: (slug) => ipcRenderer.invoke("modpacks:open", slug),
+  searchMods: (options) => ipcRenderer.invoke("mods:search", options),
+  installModrinthMod: (instanceId, projectId) => ipcRenderer.invoke("mods:install", instanceId, projectId),
   listInstanceMods: (instanceId) => ipcRenderer.invoke("mods:list", instanceId),
   toggleInstanceMod: (instanceId, fileName) => ipcRenderer.invoke("mods:toggle", instanceId, fileName),
   deleteInstanceMod: (instanceId, fileName) => ipcRenderer.invoke("mods:delete", instanceId, fileName),
